@@ -1,29 +1,33 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import GeneratedFilesPanel from "@/components/GeneratedFilesPanel";
 import RelayEditor from "@/components/RelayEditor";
 import BinarySensorEditor from "@/components/BinarySensorEditor";
 import DeviceSettings from "@/components/DeviceSettings";
 import { useEsphomeForm } from "@/hooks/useEsphomeForm";
+import { useEsphomeGeneration } from "@/hooks/useEsphomeGeneration";
 import {
   ESPHOME_API_URL,
   fetchBoards,
-  generateEsphomeProject,
 } from "@/lib/esphome-api";
-import type {
-  BoardOption,
-  GeneratedFile,
-} from "@/types/esphome";
+import type { BoardOption } from "@/types/esphome";
 
 export default function Home() {
   const [boards, setBoards] = useState<BoardOption[]>([]);
-  const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
-
   const [boardsLoading, setBoardsLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState("");
+
+  const {
+    generatedFiles,
+    generating,
+    error,
+    setError,
+    clearGeneratedFiles,
+    createGenerateHandler,
+    copyFile,
+    downloadFile,
+  } = useEsphomeGeneration();
 
   const {
     deviceName,
@@ -49,7 +53,7 @@ export default function Home() {
   } = useEsphomeForm({
     boards,
     onError: setError,
-    onClearGeneratedFiles: () => setGeneratedFiles([]),
+    onClearGeneratedFiles: clearGeneratedFiles,
   });
 
 
@@ -93,69 +97,19 @@ export default function Home() {
     return () => {
       controller.abort();
     };
-  }, [setBoard]);
+  }, [setBoard, setError]);
 
-  async function handleGenerate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const validationError = validateHardware();
-
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    try {
-      setGenerating(true);
-      setError("");
-      setGeneratedFiles([]);
-
-      const data = await generateEsphomeProject({
-        deviceName,
-        friendlyName,
-        board,
-        includeFallbackAp,
-        relays,
-        binarySensors,
-      });
-
-      setGeneratedFiles(data.files);
-    } catch (generateError) {
-      setError(
-        generateError instanceof Error
-          ? generateError.message
-          : "Ismeretlen hiba történt.",
-      );
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  async function copyFile(content: string) {
-    try {
-      await navigator.clipboard.writeText(content);
-    } catch {
-      setError("A vágólapra másolás nem sikerült.");
-    }
-  }
-
-  function downloadFile(file: GeneratedFile) {
-    const blob = new Blob([file.content], {
-      type: "text/yaml;charset=utf-8",
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = file.filename;
-
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    URL.revokeObjectURL(url);
-  }
+  const handleGenerate = createGenerateHandler(
+    {
+      deviceName,
+      friendlyName,
+      board,
+      includeFallbackAp,
+      relays,
+      binarySensors,
+    },
+    validateHardware,
+  );
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100">

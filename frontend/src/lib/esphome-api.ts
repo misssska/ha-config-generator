@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   BinarySensorConfig,
   BoardOption,
   GenerateResponse,
@@ -8,7 +8,7 @@
 export const ESPHOME_API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
-type GenerateProjectInput = {
+export type GenerateProjectInput = {
   deviceName: string;
   friendlyName: string;
   board: string;
