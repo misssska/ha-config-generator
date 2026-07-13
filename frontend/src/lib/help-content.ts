@@ -188,4 +188,25 @@ export const HELP = {
     details:
       "Általános használatra INFO vagy DEBUG ajánlott. A VERBOSE szintek növelhetik a memória- és processzorterhelést.",
   },
+  uptimeSensor: {
+    title: "Üzemidő szenzor",
+    description:
+      "Megmutatja, mennyi idő telt el az ESPHome-eszköz legutóbbi indulása óta.",
+    details:
+      "Hasznos váratlan újraindulások, tápellátási hibák és instabilitás felismeréséhez. A generált szenzor 60 másodpercenként frissül.",
+  },
+  wifiSignalSensor: {
+    title: "Wi-Fi-jelerősség",
+    description:
+      "Az eszköz által érzékelt Wi-Fi-jelszintet mutatja dBm mértékegységben.",
+    details:
+      "A nullához közelebbi érték jobb kapcsolatot jelent. Körülbelül -50 dBm erős, míg -70 dBm már gyengébb kapcsolat.",
+  },
+  restartButton: {
+    title: "Távoli újraindítás",
+    description:
+      "Újraindító gombot hoz létre a Home Assistant felületén.",
+    details:
+      "Hibakeresésnél és karbantartásnál hasznos. Megnyomása azonnal újraindítja az eszközt, ezért automatizálásokban körültekintően használd.",
+  },
 } as const;

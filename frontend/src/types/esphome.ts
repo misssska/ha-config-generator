@@ -94,3 +94,9 @@ export type NetworkSettingsConfig = {
   otaEnabled: boolean;
   loggerLevel: LoggerLevel;
 };
+
+export type SystemFeaturesConfig = {
+  includeUptimeSensor: boolean;
+  includeWifiSignalSensor: boolean;
+  includeRestartButton: boolean;
+};

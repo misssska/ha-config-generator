@@ -8,6 +8,7 @@ import type {
   GPIOPinOption,
   NetworkSettingsConfig,
   RelayConfig,
+  SystemFeaturesConfig,
 } from "@/types/esphome";
 
 type UseEsphomeFormOptions = {
@@ -44,6 +45,13 @@ export function useEsphomeForm({
       apiEncryptionEnabled: true,
       otaEnabled: true,
       loggerLevel: "DEBUG",
+    });
+
+  const [systemFeatures, setSystemFeatures] =
+    useState<SystemFeaturesConfig>({
+      includeUptimeSensor: true,
+      includeWifiSignalSensor: true,
+      includeRestartButton: true,
     });
 
   const [relays, setRelays] = useState<RelayConfig[]>([
@@ -374,6 +382,17 @@ export function useEsphomeForm({
     );
   }
 
+  function updateSystemFeatures(
+    updates: Partial<SystemFeaturesConfig>,
+  ) {
+    setSystemFeatures((currentSettings) => ({
+      ...currentSettings,
+      ...updates,
+    }));
+
+    onClearGeneratedFiles();
+  }
+
   function updateNetworkSettings(
     updates: Partial<NetworkSettingsConfig>,
   ) {
@@ -525,6 +544,8 @@ export function useEsphomeForm({
     setIncludeFallbackAp,
     networkSettings,
     updateNetworkSettings,
+    systemFeatures,
+    updateSystemFeatures,
     relays,
     binarySensors,
     currentBoard,

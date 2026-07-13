@@ -5,6 +5,7 @@ import RelayEditor from "@/components/RelayEditor";
 import BinarySensorEditor from "@/components/BinarySensorEditor";
 import DeviceSettings from "@/components/DeviceSettings";
 import NetworkSystemSettings from "@/components/NetworkSystemSettings";
+import SystemFeaturesSettings from "@/components/SystemFeaturesSettings";
 import { useEsphomeForm } from "@/hooks/useEsphomeForm";
 import { useEsphomeBoards } from "@/hooks/useEsphomeBoards";
 import { useEsphomeGeneration } from "@/hooks/useEsphomeGeneration";
@@ -39,6 +40,8 @@ export default function Home() {
     setIncludeFallbackAp,
     networkSettings,
     updateNetworkSettings,
+    systemFeatures,
+    updateSystemFeatures,
     relays,
     binarySensors,
     currentBoard,
@@ -66,6 +69,7 @@ export default function Home() {
       board,
       includeFallbackAp,
       networkSettings,
+      systemFeatures,
       relays,
       binarySensors,
     },
@@ -111,6 +115,11 @@ export default function Home() {
                 settings={networkSettings}
                 includeFallbackAp={includeFallbackAp}
                 onChange={updateNetworkSettings}
+              />
+
+              <SystemFeaturesSettings
+                settings={systemFeatures}
+                onChange={updateSystemFeatures}
               />
 
               <RelayEditor

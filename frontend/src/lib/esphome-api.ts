@@ -4,6 +4,7 @@ import type {
   GenerateResponse,
   NetworkSettingsConfig,
   RelayConfig,
+  SystemFeaturesConfig,
 } from "@/types/esphome";
 
 export const ESPHOME_API_URL =
@@ -15,6 +16,7 @@ export type GenerateProjectInput = {
   board: string;
   includeFallbackAp: boolean;
   networkSettings: NetworkSettingsConfig;
+  systemFeatures: SystemFeaturesConfig;
   relays: RelayConfig[];
   binarySensors: BinarySensorConfig[];
 };
@@ -79,6 +81,7 @@ export async function generateEsphomeProject({
   board,
   includeFallbackAp,
   networkSettings,
+  systemFeatures,
   relays,
   binarySensors,
 }: GenerateProjectInput): Promise<GenerateResponse> {
@@ -117,6 +120,12 @@ export async function generateEsphomeProject({
           networkSettings.apiEncryptionEnabled,
         ota_enabled: networkSettings.otaEnabled,
         logger_level: networkSettings.loggerLevel,
+        include_uptime_sensor:
+          systemFeatures.includeUptimeSensor,
+        include_wifi_signal_sensor:
+          systemFeatures.includeWifiSignalSensor,
+        include_restart_button:
+          systemFeatures.includeRestartButton,
         relays: relays.map((relay) => ({
           name: relay.name.trim(),
           pin: relay.pin,
