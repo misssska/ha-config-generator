@@ -24,3 +24,5 @@ secrets.yaml
 # Operációs rendszer
 Thumbs.db
 .DS_Store
+
+*.backup

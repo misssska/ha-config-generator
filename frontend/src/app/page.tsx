@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   FormEvent,
@@ -7,139 +7,28 @@ import {
   useState,
 } from "react";
 
-type GPIOPinOption = {
-  number: number;
-  label: string;
-  can_input: boolean;
-  can_output: boolean;
-  supports_pullup: boolean;
-  supports_pulldown: boolean;
-  warning: string | null;
-};
+import HelpPopover from "@/components/HelpPopover";
+import {
+  DEVICE_CLASS_OPTIONS,
+  PULL_OPTIONS,
+  RESTORE_OPTIONS,
+} from "@/lib/esphome-options";
+import { HELP } from "@/lib/help-content";
+import type {
+  BinaryDeviceClass,
+  BinarySensorConfig,
+  BoardOption,
+  GeneratedFile,
+  GenerateResponse,
+  GPIOPinOption,
+  PullMode,
+  RelayConfig,
+  RestoreMode,
+} from "@/types/esphome";
 
-type BoardOption = {
-  id: string;
-  label: string;
-  platform: "esp32" | "esp8266";
-  pins: GPIOPinOption[];
-};
-
-type GeneratedFile = {
-  filename: string;
-  content: string;
-};
-
-type GenerateResponse = {
-  files: GeneratedFile[];
-};
-
-type RestoreMode =
-  | "ALWAYS_OFF"
-  | "ALWAYS_ON"
-  | "RESTORE_DEFAULT_OFF"
-  | "RESTORE_DEFAULT_ON";
-
-type PullMode = "NONE" | "PULLUP" | "PULLDOWN";
-
-type BinaryDeviceClass =
-  | ""
-  | "door"
-  | "window"
-  | "garage_door"
-  | "opening"
-  | "motion"
-  | "occupancy"
-  | "safety"
-  | "problem"
-  | "smoke"
-  | "moisture"
-  | "gas"
-  | "vibration"
-  | "tamper"
-  | "running";
-
-type RelayConfig = {
-  clientId: number;
-  name: string;
-  pin: number;
-  inverted: boolean;
-  restoreMode: RestoreMode;
-};
-
-type BinarySensorConfig = {
-  clientId: number;
-  name: string;
-  pin: number;
-  inverted: boolean;
-  pullMode: PullMode;
-  deviceClass: BinaryDeviceClass;
-  delayedOnMs: number;
-  delayedOffMs: number;
-};
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-
-const RESTORE_OPTIONS: {
-  value: RestoreMode;
-  label: string;
-}[] = [
-  {
-    value: "ALWAYS_OFF",
-    label: "Mindig kikapcsolva indul",
-  },
-  {
-    value: "ALWAYS_ON",
-    label: "Mindig bekapcsolva indul",
-  },
-  {
-    value: "RESTORE_DEFAULT_OFF",
-    label: "Előző állapot, alapból KI",
-  },
-  {
-    value: "RESTORE_DEFAULT_ON",
-    label: "Előző állapot, alapból BE",
-  },
-];
-
-const PULL_OPTIONS: {
-  value: PullMode;
-  label: string;
-}[] = [
-  {
-    value: "NONE",
-    label: "Nincs belső ellenállás",
-  },
-  {
-    value: "PULLUP",
-    label: "Belső felhúzás – PULLUP",
-  },
-  {
-    value: "PULLDOWN",
-    label: "Belső lehúzás – PULLDOWN",
-  },
-];
-
-const DEVICE_CLASS_OPTIONS: {
-  value: BinaryDeviceClass;
-  label: string;
-}[] = [
-  { value: "", label: "Nincs megadva" },
-  { value: "door", label: "Ajtó" },
-  { value: "window", label: "Ablak" },
-  { value: "garage_door", label: "Garázsajtó" },
-  { value: "opening", label: "Nyílás" },
-  { value: "motion", label: "Mozgás" },
-  { value: "occupancy", label: "Jelenlét" },
-  { value: "safety", label: "Biztonsági érzékelő" },
-  { value: "problem", label: "Hiba" },
-  { value: "smoke", label: "Füst" },
-  { value: "moisture", label: "Nedvesség" },
-  { value: "gas", label: "Gáz" },
-  { value: "vibration", label: "Rezgés" },
-  { value: "tamper", label: "Szabotázs" },
-  { value: "running", label: "Üzemelés" },
-];
 
 export default function Home() {
   const [deviceName, setDeviceName] = useState("muhely-vezerlo");
@@ -206,9 +95,11 @@ export default function Home() {
 
         setBoards(data);
 
-        if (!data.some((item) => item.id === board) && data.length > 0) {
-          setBoard(data[0].id);
-        }
+        setBoard((currentBoardId) =>
+          data.some((item) => item.id === currentBoardId)
+            ? currentBoardId
+            : (data[0]?.id ?? currentBoardId),
+        );
       } catch (loadError) {
         if (
           loadError instanceof DOMException &&
@@ -802,10 +693,11 @@ export default function Home() {
 
                   <div>
                     <label
-                      className="mb-2 block text-sm font-medium text-slate-300"
+                      className="mb-2 flex items-center text-sm font-medium text-slate-300"
                       htmlFor="board"
                     >
                       Alaplap
+                      <HelpPopover {...HELP.board} />
                     </label>
 
                     <select
@@ -847,8 +739,9 @@ export default function Home() {
                     />
 
                     <span>
-                      <span className="block text-sm font-medium">
+                      <span className="flex items-center text-sm font-medium">
                         Fallback Access Point
+                        <HelpPopover {...HELP.fallbackAccessPoint} />
                       </span>
 
                       <span className="mt-1 block text-xs text-slate-500">
@@ -931,10 +824,11 @@ export default function Home() {
 
                           <div>
                             <label
-                              className="mb-1.5 block text-sm text-slate-300"
+                              className="mb-1.5 flex items-center text-sm text-slate-300"
                               htmlFor={`relay-pin-${relay.clientId}`}
                             >
                               GPIO-kimenet
+                              <HelpPopover {...HELP.relayPin} />
                             </label>
 
                             <select
@@ -973,10 +867,11 @@ export default function Home() {
 
                           <div>
                             <label
-                              className="mb-1.5 block text-sm text-slate-300"
+                              className="mb-1.5 flex items-center text-sm text-slate-300"
                               htmlFor={`restore-${relay.clientId}`}
                             >
                               Indulási állapot
+                              <HelpPopover {...HELP.restoreMode} />
                             </label>
 
                             <select
@@ -1014,8 +909,9 @@ export default function Home() {
                             />
 
                             <span>
-                              <span className="block text-sm font-medium">
+                              <span className="flex items-center text-sm font-medium">
                                 Fordított működés
+                                <HelpPopover {...HELP.relayInverted} />
                               </span>
                               <span className="block text-xs text-slate-500">
                                 Aktív alacsony relémodulhoz.
@@ -1116,10 +1012,11 @@ export default function Home() {
 
                           <div>
                             <label
-                              className="mb-1.5 block text-sm text-slate-300"
+                              className="mb-1.5 flex items-center text-sm text-slate-300"
                               htmlFor={`sensor-pin-${sensor.clientId}`}
                             >
                               GPIO-bemenet
+                              <HelpPopover {...HELP.inputPin} />
                             </label>
 
                             <select
@@ -1159,10 +1056,11 @@ export default function Home() {
 
                           <div>
                             <label
-                              className="mb-1.5 block text-sm text-slate-300"
+                              className="mb-1.5 flex items-center text-sm text-slate-300"
                               htmlFor={`pull-mode-${sensor.clientId}`}
                             >
                               Belső ellenállás
+                              <HelpPopover {...HELP.pullMode} />
                             </label>
 
                             <select
@@ -1198,10 +1096,11 @@ export default function Home() {
 
                           <div>
                             <label
-                              className="mb-1.5 block text-sm text-slate-300"
+                              className="mb-1.5 flex items-center text-sm text-slate-300"
                               htmlFor={`device-class-${sensor.clientId}`}
                             >
                               Eszközosztály
+                              <HelpPopover {...HELP.deviceClass} />
                             </label>
 
                             <select
@@ -1230,10 +1129,11 @@ export default function Home() {
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label
-                                className="mb-1.5 block text-sm text-slate-300"
+                                className="mb-1.5 flex items-center text-sm text-slate-300"
                                 htmlFor={`delayed-on-${sensor.clientId}`}
                               >
                                 Bekapcsolási szűrés
+                                <HelpPopover {...HELP.delayedOn} />
                               </label>
 
                               <div className="relative">
@@ -1266,10 +1166,11 @@ export default function Home() {
 
                             <div>
                               <label
-                                className="mb-1.5 block text-sm text-slate-300"
+                                className="mb-1.5 flex items-center text-sm text-slate-300"
                                 htmlFor={`delayed-off-${sensor.clientId}`}
                               >
                                 Kikapcsolási szűrés
+                                <HelpPopover {...HELP.delayedOff} />
                               </label>
 
                               <div className="relative">
@@ -1314,8 +1215,9 @@ export default function Home() {
                             />
 
                             <span>
-                              <span className="block text-sm font-medium">
+                              <span className="flex items-center text-sm font-medium">
                                 Fordított működés
+                                <HelpPopover {...HELP.inputInverted} />
                               </span>
                               <span className="block text-xs text-slate-500">
                                 Például GND-re kapcsoló PULLUP
@@ -1411,4 +1313,6 @@ export default function Home() {
     </main>
   );
 }
+
+
 
