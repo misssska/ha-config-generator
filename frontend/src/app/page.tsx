@@ -7,10 +7,21 @@ import {
   useState,
 } from "react";
 
+type GPIOPinOption = {
+  number: number;
+  label: string;
+  can_input: boolean;
+  can_output: boolean;
+  supports_pullup: boolean;
+  supports_pulldown: boolean;
+  warning: string | null;
+};
+
 type BoardOption = {
   id: string;
   label: string;
   platform: "esp32" | "esp8266";
+  pins: GPIOPinOption[];
 };
 
 type GeneratedFile = {
@@ -169,6 +180,10 @@ export default function Home() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
 
+  const currentBoard = boards.find(
+    (boardOption) => boardOption.id === board,
+  );
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -188,7 +203,12 @@ export default function Home() {
         }
 
         const data = (await response.json()) as BoardOption[];
+
         setBoards(data);
+
+        if (!data.some((item) => item.id === board) && data.length > 0) {
+          setBoard(data[0].id);
+        }
       } catch (loadError) {
         if (
           loadError instanceof DOMException &&
@@ -214,6 +234,12 @@ export default function Home() {
     };
   }, []);
 
+  function getPinProfile(pinNumber: number): GPIOPinOption | undefined {
+    return currentBoard?.pins.find(
+      (pinOption) => pinOption.number === pinNumber,
+    );
+  }
+
   function getUsedPins(): Set<number> {
     return new Set([
       ...relays.map((relay) => relay.pin),
@@ -221,21 +247,138 @@ export default function Home() {
     ]);
   }
 
-  function findFreePin(preferredPins: number[]): number {
+  function findFreePin(
+    pinType: "input" | "output",
+  ): number | null {
+    if (!currentBoard) {
+      return null;
+    }
+
     const usedPins = getUsedPins();
 
-    return (
-      preferredPins.find((pin) => !usedPins.has(pin)) ??
-      Array.from({ length: 49 }, (_, index) => index).find(
-        (pin) => !usedPins.has(pin),
-      ) ??
-      0
+    const pin = currentBoard.pins.find((pinOption) => {
+      const supportsType =
+        pinType === "output"
+          ? pinOption.can_output
+          : pinOption.can_input;
+
+      return supportsType && !usedPins.has(pinOption.number);
+    });
+
+    return pin?.number ?? null;
+  }
+
+  function handleBoardChange(nextBoardId: string) {
+    const nextBoard = boards.find(
+      (boardOption) => boardOption.id === nextBoardId,
     );
+
+    if (!nextBoard) {
+      return;
+    }
+
+    const usedPins = new Set<number>();
+    const nextRelays: RelayConfig[] = [];
+    const nextSensors: BinarySensorConfig[] = [];
+
+    for (const relay of relays) {
+      let pinProfile = nextBoard.pins.find(
+        (pinOption) =>
+          pinOption.number === relay.pin &&
+          pinOption.can_output &&
+          !usedPins.has(pinOption.number),
+      );
+
+      if (!pinProfile) {
+        pinProfile = nextBoard.pins.find(
+          (pinOption) =>
+            pinOption.can_output &&
+            !usedPins.has(pinOption.number),
+        );
+      }
+
+      if (!pinProfile) {
+        setError(
+          `${nextBoard.label}: nincs elegendő szabad kimeneti GPIO a hozzáadott relékhez.`,
+        );
+        return;
+      }
+
+      usedPins.add(pinProfile.number);
+
+      nextRelays.push({
+        ...relay,
+        pin: pinProfile.number,
+      });
+    }
+
+    for (const sensor of binarySensors) {
+      let pinProfile = nextBoard.pins.find(
+        (pinOption) =>
+          pinOption.number === sensor.pin &&
+          pinOption.can_input &&
+          !usedPins.has(pinOption.number),
+      );
+
+      if (!pinProfile) {
+        pinProfile = nextBoard.pins.find(
+          (pinOption) =>
+            pinOption.can_input &&
+            !usedPins.has(pinOption.number),
+        );
+      }
+
+      if (!pinProfile) {
+        setError(
+          `${nextBoard.label}: nincs elegendő szabad bemeneti GPIO a hozzáadott érzékelőkhöz.`,
+        );
+        return;
+      }
+
+      let nextPullMode = sensor.pullMode;
+
+      if (
+        nextPullMode === "PULLUP" &&
+        !pinProfile.supports_pullup
+      ) {
+        nextPullMode = "NONE";
+      }
+
+      if (
+        nextPullMode === "PULLDOWN" &&
+        !pinProfile.supports_pulldown
+      ) {
+        nextPullMode = "NONE";
+      }
+
+      usedPins.add(pinProfile.number);
+
+      nextSensors.push({
+        ...sensor,
+        pin: pinProfile.number,
+        pullMode: nextPullMode,
+      });
+    }
+
+    setError("");
+    setBoard(nextBoardId);
+    setRelays(nextRelays);
+    setBinarySensors(nextSensors);
+    setGeneratedFiles([]);
   }
 
   function addRelay() {
     if (relays.length >= 8) {
       setError("Legfeljebb 8 relé adható egy eszközhöz.");
+      return;
+    }
+
+    const freePin = findFreePin("output");
+
+    if (freePin === null) {
+      setError(
+        "A kiválasztott alaplapon nincs több szabad kimeneti GPIO.",
+      );
       return;
     }
 
@@ -246,9 +389,7 @@ export default function Home() {
       {
         clientId: nextRelayId.current++,
         name: `Relé ${currentRelays.length + 1}`,
-        pin: findFreePin([
-          23, 22, 21, 19, 18, 17, 16, 27, 26, 25, 33, 32, 14, 13,
-        ]),
+        pin: freePin,
         inverted: true,
         restoreMode: "ALWAYS_OFF",
       },
@@ -279,9 +420,22 @@ export default function Home() {
 
   function addBinarySensor() {
     if (binarySensors.length >= 16) {
-      setError("Legfeljebb 16 digitális bemenet adható egy eszközhöz.");
+      setError(
+        "Legfeljebb 16 digitális bemenet adható egy eszközhöz.",
+      );
       return;
     }
+
+    const freePin = findFreePin("input");
+
+    if (freePin === null) {
+      setError(
+        "A kiválasztott alaplapon nincs több szabad bemeneti GPIO.",
+      );
+      return;
+    }
+
+    const pinProfile = getPinProfile(freePin);
 
     setError("");
 
@@ -290,11 +444,11 @@ export default function Home() {
       {
         clientId: nextBinarySensorId.current++,
         name: `Digitális bemenet ${currentSensors.length + 1}`,
-        pin: findFreePin([
-          22, 21, 19, 18, 17, 16, 27, 26, 25, 33, 32, 14, 13, 12, 4, 5,
-        ]),
+        pin: freePin,
         inverted: true,
-        pullMode: "PULLUP",
+        pullMode: pinProfile?.supports_pullup
+          ? "PULLUP"
+          : "NONE",
         deviceClass: "",
         delayedOnMs: 20,
         delayedOffMs: 20,
@@ -324,18 +478,66 @@ export default function Home() {
     );
   }
 
+  function updateBinarySensorPin(
+    clientId: number,
+    pinNumber: number,
+  ) {
+    const pinProfile = getPinProfile(pinNumber);
+
+    setBinarySensors((currentSensors) =>
+      currentSensors.map((sensor) => {
+        if (sensor.clientId !== clientId) {
+          return sensor;
+        }
+
+        let nextPullMode = sensor.pullMode;
+
+        if (
+          nextPullMode === "PULLUP" &&
+          !pinProfile?.supports_pullup
+        ) {
+          nextPullMode = "NONE";
+        }
+
+        if (
+          nextPullMode === "PULLDOWN" &&
+          !pinProfile?.supports_pulldown
+        ) {
+          nextPullMode = "NONE";
+        }
+
+        return {
+          ...sensor,
+          pin: pinNumber,
+          pullMode: nextPullMode,
+        };
+      }),
+    );
+  }
+
   function validateHardware(): string | null {
+    if (!currentBoard) {
+      return "A kiválasztott alaplap GPIO-profilja nem érhető el.";
+    }
+
     const usedPins = new Map<number, string>();
 
     for (const relay of relays) {
       const name = relay.name.trim();
+      const pinProfile = currentBoard.pins.find(
+        (pinOption) => pinOption.number === relay.pin,
+      );
 
       if (!name) {
         return "Minden relének kötelező nevet adni.";
       }
 
-      if (!Number.isInteger(relay.pin) || relay.pin < 0 || relay.pin > 48) {
-        return `${name}: a GPIO csak 0 és 48 közötti egész szám lehet.`;
+      if (!pinProfile) {
+        return `GPIO${relay.pin} nem érhető el a kiválasztott alaplapon.`;
+      }
+
+      if (!pinProfile.can_output) {
+        return `GPIO${relay.pin} nem használható relékimenetként.`;
       }
 
       const previousUsage = usedPins.get(relay.pin);
@@ -349,13 +551,34 @@ export default function Home() {
 
     for (const sensor of binarySensors) {
       const name = sensor.name.trim();
+      const pinProfile = currentBoard.pins.find(
+        (pinOption) => pinOption.number === sensor.pin,
+      );
 
       if (!name) {
         return "Minden digitális bemenetnek kötelező nevet adni.";
       }
 
-      if (!Number.isInteger(sensor.pin) || sensor.pin < 0 || sensor.pin > 48) {
-        return `${name}: a GPIO csak 0 és 48 közötti egész szám lehet.`;
+      if (!pinProfile) {
+        return `GPIO${sensor.pin} nem érhető el a kiválasztott alaplapon.`;
+      }
+
+      if (!pinProfile.can_input) {
+        return `GPIO${sensor.pin} nem használható bemenetként.`;
+      }
+
+      if (
+        sensor.pullMode === "PULLUP" &&
+        !pinProfile.supports_pullup
+      ) {
+        return `GPIO${sensor.pin} nem támogat belső PULLUP ellenállást.`;
+      }
+
+      if (
+        sensor.pullMode === "PULLDOWN" &&
+        !pinProfile.supports_pulldown
+      ) {
+        return `GPIO${sensor.pin} nem támogat belső PULLDOWN ellenállást.`;
       }
 
       if (
@@ -363,7 +586,7 @@ export default function Home() {
         sensor.delayedOnMs < 0 ||
         sensor.delayedOnMs > 10000
       ) {
-        return `${name}: a bekapcsolási késleltetés 0 és 10000 ms közötti egész szám lehet.`;
+        return `${name}: a bekapcsolási szűrés 0 és 10000 ms közötti egész szám lehet.`;
       }
 
       if (
@@ -371,7 +594,7 @@ export default function Home() {
         sensor.delayedOffMs < 0 ||
         sensor.delayedOffMs > 10000
       ) {
-        return `${name}: a kikapcsolási késleltetés 0 és 10000 ms közötti egész szám lehet.`;
+        return `${name}: a kikapcsolási szűrés 0 és 10000 ms közötti egész szám lehet.`;
       }
 
       const previousUsage = usedPins.get(sensor.pin);
@@ -516,12 +739,12 @@ export default function Home() {
           </h1>
 
           <p className="mt-3 max-w-3xl text-slate-400">
-            Állítsd össze az ESPHome-eszközt, majd töltsd le a kész
-            konfigurációs fájlokat.
+            Alaplapfüggő GPIO-ellenőrzéssel készíthetsz ESPHome
+            konfigurációkat.
           </p>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[460px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[470px_1fr]">
           <section className="h-fit rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
             <form className="space-y-7" onSubmit={handleGenerate}>
               <section>
@@ -588,7 +811,9 @@ export default function Home() {
                     <select
                       id="board"
                       value={board}
-                      onChange={(event) => setBoard(event.target.value)}
+                      onChange={(event) =>
+                        handleBoardChange(event.target.value)
+                      }
                       disabled={boardsLoading}
                       className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 outline-none focus:border-blue-500 disabled:opacity-60"
                     >
@@ -602,6 +827,13 @@ export default function Home() {
                         </option>
                       ))}
                     </select>
+
+                    {currentBoard && (
+                      <p className="mt-1.5 text-xs text-slate-500">
+                        {currentBoard.pins.length} engedélyezett GPIO a
+                        profilban.
+                      </p>
+                    )}
                   </div>
 
                   <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-800 bg-slate-950 p-3">
@@ -632,138 +864,168 @@ export default function Home() {
                   <div>
                     <h2 className="text-xl font-semibold">GPIO-relék</h2>
                     <p className="mt-1 text-xs text-slate-500">
-                      Legfeljebb 8 relékimenet.
+                      Csak kimenetre alkalmas pinek választhatók.
                     </p>
                   </div>
 
                   <button
                     type="button"
                     onClick={addRelay}
-                    disabled={relays.length >= 8}
+                    disabled={relays.length >= 8 || !currentBoard}
                     className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-sm text-blue-300 disabled:opacity-40"
                   >
                     + Relé
                   </button>
                 </div>
 
+                {relays.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/50 p-4 text-center text-sm text-slate-500">
+                    Nincs hozzáadott relé.
+                  </div>
+                )}
+
                 <div className="space-y-4">
-                  {relays.map((relay, index) => (
-                    <article
-                      key={relay.clientId}
-                      className="rounded-xl border border-slate-700 bg-slate-950 p-4"
-                    >
-                      <div className="mb-4 flex items-center justify-between">
-                        <h3 className="font-semibold text-emerald-300">
-                          Relé {index + 1}
-                        </h3>
+                  {relays.map((relay, index) => {
+                    const pinProfile = getPinProfile(relay.pin);
 
-                        <button
-                          type="button"
-                          onClick={() => removeRelay(relay.clientId)}
-                          className="rounded-md border border-red-500/30 px-2.5 py-1 text-xs text-red-300"
-                        >
-                          Törlés
-                        </button>
-                      </div>
+                    return (
+                      <article
+                        key={relay.clientId}
+                        className="rounded-xl border border-slate-700 bg-slate-950 p-4"
+                      >
+                        <div className="mb-4 flex items-center justify-between">
+                          <h3 className="font-semibold text-emerald-300">
+                            Relé {index + 1}
+                          </h3>
 
-                      <div className="space-y-4">
-                        <div>
-                          <label
-                            className="mb-1.5 block text-sm text-slate-300"
-                            htmlFor={`relay-name-${relay.clientId}`}
+                          <button
+                            type="button"
+                            onClick={() => removeRelay(relay.clientId)}
+                            className="rounded-md border border-red-500/30 px-2.5 py-1 text-xs text-red-300"
                           >
-                            Home Assistant-név
-                          </label>
-
-                          <input
-                            id={`relay-name-${relay.clientId}`}
-                            value={relay.name}
-                            onChange={(event) =>
-                              updateRelay(relay.clientId, {
-                                name: event.target.value,
-                              })
-                            }
-                            required
-                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
-                          />
+                            Törlés
+                          </button>
                         </div>
 
-                        <div>
-                          <label
-                            className="mb-1.5 block text-sm text-slate-300"
-                            htmlFor={`relay-pin-${relay.clientId}`}
-                          >
-                            GPIO
-                          </label>
+                        <div className="space-y-4">
+                          <div>
+                            <label
+                              className="mb-1.5 block text-sm text-slate-300"
+                              htmlFor={`relay-name-${relay.clientId}`}
+                            >
+                              Home Assistant-név
+                            </label>
 
-                          <input
-                            id={`relay-pin-${relay.clientId}`}
-                            type="number"
-                            value={relay.pin}
-                            onChange={(event) =>
-                              updateRelay(relay.clientId, {
-                                pin: Number(event.target.value),
-                              })
-                            }
-                            min={0}
-                            max={48}
-                            step={1}
-                            required
-                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
-                          />
-                        </div>
+                            <input
+                              id={`relay-name-${relay.clientId}`}
+                              value={relay.name}
+                              onChange={(event) =>
+                                updateRelay(relay.clientId, {
+                                  name: event.target.value,
+                                })
+                              }
+                              required
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
+                            />
+                          </div>
 
-                        <div>
-                          <label
-                            className="mb-1.5 block text-sm text-slate-300"
-                            htmlFor={`restore-${relay.clientId}`}
-                          >
-                            Indulási állapot
-                          </label>
+                          <div>
+                            <label
+                              className="mb-1.5 block text-sm text-slate-300"
+                              htmlFor={`relay-pin-${relay.clientId}`}
+                            >
+                              GPIO-kimenet
+                            </label>
 
-                          <select
-                            id={`restore-${relay.clientId}`}
-                            value={relay.restoreMode}
-                            onChange={(event) =>
-                              updateRelay(relay.clientId, {
-                                restoreMode:
-                                  event.target.value as RestoreMode,
-                              })
-                            }
-                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none"
-                          >
-                            {RESTORE_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                            <select
+                              id={`relay-pin-${relay.clientId}`}
+                              value={relay.pin}
+                              onChange={(event) =>
+                                updateRelay(relay.clientId, {
+                                  pin: Number(event.target.value),
+                                })
+                              }
+                              disabled={!currentBoard}
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
+                            >
+                              {currentBoard?.pins
+                                .filter(
+                                  (pinOption) => pinOption.can_output,
+                                )
+                                .map((pinOption) => (
+                                  <option
+                                    key={pinOption.number}
+                                    value={pinOption.number}
+                                  >
+                                    {pinOption.label}
+                                    {pinOption.warning ? " ⚠" : ""}
+                                  </option>
+                                ))}
+                            </select>
 
-                        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-3">
-                          <input
-                            type="checkbox"
-                            checked={relay.inverted}
-                            onChange={(event) =>
-                              updateRelay(relay.clientId, {
-                                inverted: event.target.checked,
-                              })
-                            }
-                            className="h-4 w-4"
-                          />
+                            {pinProfile?.warning && (
+                              <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-200">
+                                <strong>Figyelmeztetés:</strong>{" "}
+                                {pinProfile.warning}
+                              </div>
+                            )}
+                          </div>
 
-                          <span>
-                            <span className="block text-sm font-medium">
-                              Fordított működés
+                          <div>
+                            <label
+                              className="mb-1.5 block text-sm text-slate-300"
+                              htmlFor={`restore-${relay.clientId}`}
+                            >
+                              Indulási állapot
+                            </label>
+
+                            <select
+                              id={`restore-${relay.clientId}`}
+                              value={relay.restoreMode}
+                              onChange={(event) =>
+                                updateRelay(relay.clientId, {
+                                  restoreMode:
+                                    event.target.value as RestoreMode,
+                                })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none"
+                            >
+                              {RESTORE_OPTIONS.map((option) => (
+                                <option
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-3">
+                            <input
+                              type="checkbox"
+                              checked={relay.inverted}
+                              onChange={(event) =>
+                                updateRelay(relay.clientId, {
+                                  inverted: event.target.checked,
+                                })
+                              }
+                              className="h-4 w-4"
+                            />
+
+                            <span>
+                              <span className="block text-sm font-medium">
+                                Fordított működés
+                              </span>
+                              <span className="block text-xs text-slate-500">
+                                Aktív alacsony relémodulhoz.
+                              </span>
                             </span>
-                            <span className="block text-xs text-slate-500">
-                              Aktív alacsony relémodulhoz.
-                            </span>
-                          </span>
-                        </label>
-                      </div>
-                    </article>
-                  ))}
+                          </label>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               </section>
 
@@ -774,228 +1036,297 @@ export default function Home() {
                       Digitális bemenetek
                     </h2>
                     <p className="mt-1 text-xs text-slate-500">
-                      Nyomógomb, ajtó, végállás vagy mozgásérzékelő.
+                      A belső ellenállások pinfüggően választhatók.
                     </p>
                   </div>
 
                   <button
                     type="button"
                     onClick={addBinarySensor}
-                    disabled={binarySensors.length >= 16}
+                    disabled={
+                      binarySensors.length >= 16 || !currentBoard
+                    }
                     className="rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-sm text-violet-300 disabled:opacity-40"
                   >
                     + Bemenet
                   </button>
                 </div>
 
+                {binarySensors.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/50 p-4 text-center text-sm text-slate-500">
+                    Nincs hozzáadott digitális bemenet.
+                  </div>
+                )}
+
                 <div className="space-y-4">
-                  {binarySensors.map((sensor, index) => (
-                    <article
-                      key={sensor.clientId}
-                      className="rounded-xl border border-slate-700 bg-slate-950 p-4"
-                    >
-                      <div className="mb-4 flex items-center justify-between">
-                        <h3 className="font-semibold text-violet-300">
-                          Bemenet {index + 1}
-                        </h3>
+                  {binarySensors.map((sensor, index) => {
+                    const pinProfile = getPinProfile(sensor.pin);
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            removeBinarySensor(sensor.clientId)
-                          }
-                          className="rounded-md border border-red-500/30 px-2.5 py-1 text-xs text-red-300"
-                        >
-                          Törlés
-                        </button>
-                      </div>
+                    const pullOptions = PULL_OPTIONS.filter(
+                      (option) =>
+                        option.value === "NONE" ||
+                        (option.value === "PULLUP" &&
+                          pinProfile?.supports_pullup) ||
+                        (option.value === "PULLDOWN" &&
+                          pinProfile?.supports_pulldown),
+                    );
 
-                      <div className="space-y-4">
-                        <div>
-                          <label
-                            className="mb-1.5 block text-sm text-slate-300"
-                            htmlFor={`sensor-name-${sensor.clientId}`}
-                          >
-                            Home Assistant-név
-                          </label>
+                    return (
+                      <article
+                        key={sensor.clientId}
+                        className="rounded-xl border border-slate-700 bg-slate-950 p-4"
+                      >
+                        <div className="mb-4 flex items-center justify-between">
+                          <h3 className="font-semibold text-violet-300">
+                            Bemenet {index + 1}
+                          </h3>
 
-                          <input
-                            id={`sensor-name-${sensor.clientId}`}
-                            value={sensor.name}
-                            onChange={(event) =>
-                              updateBinarySensor(sensor.clientId, {
-                                name: event.target.value,
-                              })
+                          <button
+                            type="button"
+                            onClick={() =>
+                              removeBinarySensor(sensor.clientId)
                             }
-                            required
-                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
-                          />
+                            className="rounded-md border border-red-500/30 px-2.5 py-1 text-xs text-red-300"
+                          >
+                            Törlés
+                          </button>
                         </div>
 
-                        <div>
-                          <label
-                            className="mb-1.5 block text-sm text-slate-300"
-                            htmlFor={`sensor-pin-${sensor.clientId}`}
-                          >
-                            GPIO
-                          </label>
-
-                          <input
-                            id={`sensor-pin-${sensor.clientId}`}
-                            type="number"
-                            value={sensor.pin}
-                            onChange={(event) =>
-                              updateBinarySensor(sensor.clientId, {
-                                pin: Number(event.target.value),
-                              })
-                            }
-                            min={0}
-                            max={48}
-                            step={1}
-                            required
-                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
-                          />
-                        </div>
-
-                        <div>
-                          <label
-                            className="mb-1.5 block text-sm text-slate-300"
-                            htmlFor={`pull-mode-${sensor.clientId}`}
-                          >
-                            Belső ellenállás
-                          </label>
-
-                          <select
-                            id={`pull-mode-${sensor.clientId}`}
-                            value={sensor.pullMode}
-                            onChange={(event) =>
-                              updateBinarySensor(sensor.clientId, {
-                                pullMode: event.target.value as PullMode,
-                              })
-                            }
-                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none"
-                          >
-                            {PULL_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label
-                            className="mb-1.5 block text-sm text-slate-300"
-                            htmlFor={`device-class-${sensor.clientId}`}
-                          >
-                            Eszközosztály
-                          </label>
-
-                          <select
-                            id={`device-class-${sensor.clientId}`}
-                            value={sensor.deviceClass}
-                            onChange={(event) =>
-                              updateBinarySensor(sensor.clientId, {
-                                deviceClass:
-                                  event.target.value as BinaryDeviceClass,
-                              })
-                            }
-                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none"
-                          >
-                            {DEVICE_CLASS_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-4">
                           <div>
                             <label
                               className="mb-1.5 block text-sm text-slate-300"
-                              htmlFor={`delayed-on-${sensor.clientId}`}
+                              htmlFor={`sensor-name-${sensor.clientId}`}
                             >
-                              Bekapcsolási szűrés
+                              Home Assistant-név
                             </label>
 
-                            <div className="relative">
-                              <input
-                                id={`delayed-on-${sensor.clientId}`}
-                                type="number"
-                                value={sensor.delayedOnMs}
-                                onChange={(event) =>
-                                  updateBinarySensor(sensor.clientId, {
-                                    delayedOnMs: Number(event.target.value),
-                                  })
-                                }
-                                min={0}
-                                max={10000}
-                                step={1}
-                                required
-                                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 pr-10 outline-none"
-                              />
-                              <span className="absolute right-3 top-2 text-sm text-slate-500">
-                                ms
-                              </span>
-                            </div>
+                            <input
+                              id={`sensor-name-${sensor.clientId}`}
+                              value={sensor.name}
+                              onChange={(event) =>
+                                updateBinarySensor(sensor.clientId, {
+                                  name: event.target.value,
+                                })
+                              }
+                              required
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
+                            />
                           </div>
 
                           <div>
                             <label
                               className="mb-1.5 block text-sm text-slate-300"
-                              htmlFor={`delayed-off-${sensor.clientId}`}
+                              htmlFor={`sensor-pin-${sensor.clientId}`}
                             >
-                              Kikapcsolási szűrés
+                              GPIO-bemenet
                             </label>
 
-                            <div className="relative">
-                              <input
-                                id={`delayed-off-${sensor.clientId}`}
-                                type="number"
-                                value={sensor.delayedOffMs}
-                                onChange={(event) =>
-                                  updateBinarySensor(sensor.clientId, {
-                                    delayedOffMs: Number(event.target.value),
-                                  })
-                                }
-                                min={0}
-                                max={10000}
-                                step={1}
-                                required
-                                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 pr-10 outline-none"
-                              />
-                              <span className="absolute right-3 top-2 text-sm text-slate-500">
-                                ms
-                              </span>
+                            <select
+                              id={`sensor-pin-${sensor.clientId}`}
+                              value={sensor.pin}
+                              onChange={(event) =>
+                                updateBinarySensorPin(
+                                  sensor.clientId,
+                                  Number(event.target.value),
+                                )
+                              }
+                              disabled={!currentBoard}
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
+                            >
+                              {currentBoard?.pins
+                                .filter(
+                                  (pinOption) => pinOption.can_input,
+                                )
+                                .map((pinOption) => (
+                                  <option
+                                    key={pinOption.number}
+                                    value={pinOption.number}
+                                  >
+                                    {pinOption.label}
+                                    {pinOption.warning ? " ⚠" : ""}
+                                  </option>
+                                ))}
+                            </select>
+
+                            {pinProfile?.warning && (
+                              <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-200">
+                                <strong>Figyelmeztetés:</strong>{" "}
+                                {pinProfile.warning}
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <label
+                              className="mb-1.5 block text-sm text-slate-300"
+                              htmlFor={`pull-mode-${sensor.clientId}`}
+                            >
+                              Belső ellenállás
+                            </label>
+
+                            <select
+                              id={`pull-mode-${sensor.clientId}`}
+                              value={sensor.pullMode}
+                              onChange={(event) =>
+                                updateBinarySensor(sensor.clientId, {
+                                  pullMode:
+                                    event.target.value as PullMode,
+                                })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none"
+                            >
+                              {pullOptions.map((option) => (
+                                <option
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+
+                            {pinProfile &&
+                              !pinProfile.supports_pullup &&
+                              !pinProfile.supports_pulldown && (
+                                <p className="mt-2 text-xs text-slate-500">
+                                  Ehhez a GPIO-hoz külső felhúzó vagy
+                                  lehúzó ellenállás szükséges.
+                                </p>
+                              )}
+                          </div>
+
+                          <div>
+                            <label
+                              className="mb-1.5 block text-sm text-slate-300"
+                              htmlFor={`device-class-${sensor.clientId}`}
+                            >
+                              Eszközosztály
+                            </label>
+
+                            <select
+                              id={`device-class-${sensor.clientId}`}
+                              value={sensor.deviceClass}
+                              onChange={(event) =>
+                                updateBinarySensor(sensor.clientId, {
+                                  deviceClass:
+                                    event.target
+                                      .value as BinaryDeviceClass,
+                                })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none"
+                            >
+                              {DEVICE_CLASS_OPTIONS.map((option) => (
+                                <option
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label
+                                className="mb-1.5 block text-sm text-slate-300"
+                                htmlFor={`delayed-on-${sensor.clientId}`}
+                              >
+                                Bekapcsolási szűrés
+                              </label>
+
+                              <div className="relative">
+                                <input
+                                  id={`delayed-on-${sensor.clientId}`}
+                                  type="number"
+                                  value={sensor.delayedOnMs}
+                                  onChange={(event) =>
+                                    updateBinarySensor(
+                                      sensor.clientId,
+                                      {
+                                        delayedOnMs: Number(
+                                          event.target.value,
+                                        ),
+                                      },
+                                    )
+                                  }
+                                  min={0}
+                                  max={10000}
+                                  step={1}
+                                  required
+                                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 pr-10 outline-none"
+                                />
+
+                                <span className="absolute right-3 top-2 text-sm text-slate-500">
+                                  ms
+                                </span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label
+                                className="mb-1.5 block text-sm text-slate-300"
+                                htmlFor={`delayed-off-${sensor.clientId}`}
+                              >
+                                Kikapcsolási szűrés
+                              </label>
+
+                              <div className="relative">
+                                <input
+                                  id={`delayed-off-${sensor.clientId}`}
+                                  type="number"
+                                  value={sensor.delayedOffMs}
+                                  onChange={(event) =>
+                                    updateBinarySensor(
+                                      sensor.clientId,
+                                      {
+                                        delayedOffMs: Number(
+                                          event.target.value,
+                                        ),
+                                      },
+                                    )
+                                  }
+                                  min={0}
+                                  max={10000}
+                                  step={1}
+                                  required
+                                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 pr-10 outline-none"
+                                />
+
+                                <span className="absolute right-3 top-2 text-sm text-slate-500">
+                                  ms
+                                </span>
+                              </div>
                             </div>
                           </div>
+
+                          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-3">
+                            <input
+                              type="checkbox"
+                              checked={sensor.inverted}
+                              onChange={(event) =>
+                                updateBinarySensor(sensor.clientId, {
+                                  inverted: event.target.checked,
+                                })
+                              }
+                              className="h-4 w-4"
+                            />
+
+                            <span>
+                              <span className="block text-sm font-medium">
+                                Fordított működés
+                              </span>
+                              <span className="block text-xs text-slate-500">
+                                Például GND-re kapcsoló PULLUP
+                                bemenethez.
+                              </span>
+                            </span>
+                          </label>
                         </div>
-
-                        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-3">
-                          <input
-                            type="checkbox"
-                            checked={sensor.inverted}
-                            onChange={(event) =>
-                              updateBinarySensor(sensor.clientId, {
-                                inverted: event.target.checked,
-                              })
-                            }
-                            className="h-4 w-4"
-                          />
-
-                          <span>
-                            <span className="block text-sm font-medium">
-                              Fordított működés
-                            </span>
-                            <span className="block text-xs text-slate-500">
-                              Például GND-re kapcsoló PULLUP bemenethez.
-                            </span>
-                          </span>
-                        </label>
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    );
+                  })}
                 </div>
               </section>
 
@@ -1007,7 +1338,9 @@ export default function Home() {
 
               <button
                 type="submit"
-                disabled={generating || boardsLoading}
+                disabled={
+                  generating || boardsLoading || !currentBoard
+                }
                 className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700"
               >
                 {generating
@@ -1078,3 +1411,4 @@ export default function Home() {
     </main>
   );
 }
+
