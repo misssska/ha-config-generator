@@ -188,6 +188,28 @@ export const HELP = {
     details:
       "Általános használatra INFO vagy DEBUG ajánlott. A VERBOSE szintek növelhetik a memória- és processzorterhelést.",
   },
+  statusLed: {
+    title: "ESPHome státusz-LED",
+    description:
+      "Egy LED villogási mintákkal jelzi az ESPHome hálózati és hibaállapotait.",
+    details:
+      "Ehhez külön GPIO szükséges. Az alaplap beépített LEDje is használható, ha ismert a GPIO száma és a logikai működése.",
+  },
+  statusLedPin: {
+    title: "Státusz-LED GPIO",
+    description:
+      "Az ESPHome ezen a kimeneten vezérli az állapotjelző LEDet.",
+    details:
+      "A LEDet megfelelő soros ellenállással használd. Boot-, UART-, USB- vagy beépített LED-funkcióval megosztott pineknél figyelj a megjelenő figyelmeztetésre.",
+    variant: "warning",
+  },
+  statusLedInverted: {
+    title: "Fordított LED-logika",
+    description:
+      "Megfordítja a LED be- és kikapcsolási logikai szintjét.",
+    details:
+      "Aktív LOW bekötésnél vagy sok alaplapi LEDnél szükséges. Ha a LED fordítva világít, módosítsd ezt a kapcsolót.",
+  },
   uptimeSensor: {
     title: "Üzemidő szenzor",
     description:

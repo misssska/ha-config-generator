@@ -6,6 +6,7 @@ import BinarySensorEditor from "@/components/BinarySensorEditor";
 import DeviceSettings from "@/components/DeviceSettings";
 import NetworkSystemSettings from "@/components/NetworkSystemSettings";
 import SystemFeaturesSettings from "@/components/SystemFeaturesSettings";
+import StatusLedSettings from "@/components/StatusLedSettings";
 import { useEsphomeForm } from "@/hooks/useEsphomeForm";
 import { useEsphomeBoards } from "@/hooks/useEsphomeBoards";
 import { useEsphomeGeneration } from "@/hooks/useEsphomeGeneration";
@@ -43,6 +44,9 @@ export default function Home() {
     systemFeatures,
     updateSystemFeatures,
     statusLed,
+    enableStatusLed,
+    disableStatusLed,
+    updateStatusLed,
     pwmOutputs,
     adcInputs,
     relays,
@@ -126,6 +130,14 @@ export default function Home() {
               <SystemFeaturesSettings
                 settings={systemFeatures}
                 onChange={updateSystemFeatures}
+              />
+
+              <StatusLedSettings
+                currentBoard={currentBoard}
+                statusLed={statusLed}
+                onEnable={enableStatusLed}
+                onDisable={disableStatusLed}
+                onUpdate={updateStatusLed}
               />
 
               <RelayEditor
