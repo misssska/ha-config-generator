@@ -116,6 +116,59 @@ class GPIOBinarySensor(BaseModel):
     )
 
 
+class GPIOStatusLED(BaseModel):
+    pin: int = Field(
+        ge=0,
+        le=48,
+        examples=[2],
+    )
+    inverted: bool = True
+
+
+class GPIOPWMOutput(BaseModel):
+    name: str = Field(
+        min_length=1,
+        max_length=64,
+        examples=["Műhely LED-szalag"],
+    )
+    pin: int = Field(
+        ge=0,
+        le=48,
+        examples=[25],
+    )
+    inverted: bool = False
+    frequency_hz: int = Field(
+        default=1000,
+        ge=10,
+        le=40000,
+    )
+
+
+class GPIOADCInput(BaseModel):
+    name: str = Field(
+        min_length=1,
+        max_length=64,
+        examples=["Tápfeszültség"],
+    )
+    pin: int = Field(
+        ge=0,
+        le=48,
+        examples=[34],
+    )
+    update_interval_s: int = Field(
+        default=60,
+        ge=1,
+        le=3600,
+    )
+    attenuation: Literal[
+        "auto",
+        "0db",
+        "2.5db",
+        "6db",
+        "12db",
+    ] = "auto"
+
+
 class ESPHomeGenerateRequest(BaseModel):
     device_name: str = Field(
         min_length=1,
@@ -163,6 +216,15 @@ class ESPHomeGenerateRequest(BaseModel):
     include_uptime_sensor: bool = True
     include_wifi_signal_sensor: bool = True
     include_restart_button: bool = True
+    status_led: GPIOStatusLED | None = None
+    pwm_outputs: list[GPIOPWMOutput] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+    adc_inputs: list[GPIOADCInput] = Field(
+        default_factory=list,
+        max_length=8,
+    )
     relays: list[GPIORelay] = Field(
         default_factory=list,
         max_length=8,
@@ -258,6 +320,93 @@ class ESPHomeGenerateRequest(BaseModel):
                 )
 
             used_pins[sensor.pin] = f"bemenet: {sensor.name}"
+
+        if self.status_led is not None:
+            status_pin = self.status_led.pin
+            pin_profile = get_pin_profile(
+                self.board,
+                status_pin,
+            )
+
+            if pin_profile is None:
+                raise ValueError(
+                    f"GPIO{status_pin} nem érhető el a "
+                    f"kiválasztott {self.board} alaplapon."
+                )
+
+            if not pin_profile["can_output"]:
+                raise ValueError(
+                    f"GPIO{status_pin} nem használható "
+                    "státusz-LED kimenetként."
+                )
+
+            if status_pin in used_pins:
+                raise ValueError(
+                    f"GPIO{status_pin} többször van használva: "
+                    f"{used_pins[status_pin]} és státusz-LED."
+                )
+
+            used_pins[status_pin] = (
+                f"státusz-LED: GPIO{status_pin}"
+            )
+
+        for pwm_output in self.pwm_outputs:
+            pin_profile = get_pin_profile(
+                self.board,
+                pwm_output.pin,
+            )
+
+            if pin_profile is None:
+                raise ValueError(
+                    f"GPIO{pwm_output.pin} nem érhető el a "
+                    f"kiválasztott {self.board} alaplapon."
+                )
+
+            if not pin_profile["supports_pwm"]:
+                raise ValueError(
+                    f"GPIO{pwm_output.pin} nem támogat "
+                    f"PWM-kimenetet ezen az alaplapon."
+                )
+
+            if pwm_output.pin in used_pins:
+                raise ValueError(
+                    f"GPIO{pwm_output.pin} többször van "
+                    f"használva: {used_pins[pwm_output.pin]} "
+                    f"és PWM-kimenet: {pwm_output.name}."
+                )
+
+            used_pins[pwm_output.pin] = (
+                f"PWM-kimenet: {pwm_output.name}"
+            )
+
+        for adc_input in self.adc_inputs:
+            pin_profile = get_pin_profile(
+                self.board,
+                adc_input.pin,
+            )
+
+            if pin_profile is None:
+                raise ValueError(
+                    f"GPIO{adc_input.pin} nem érhető el a "
+                    f"kiválasztott {self.board} alaplapon."
+                )
+
+            if not pin_profile["supports_adc"]:
+                raise ValueError(
+                    f"GPIO{adc_input.pin} nem támogat "
+                    f"ADC-bemenetet ezen az alaplapon."
+                )
+
+            if adc_input.pin in used_pins:
+                raise ValueError(
+                    f"GPIO{adc_input.pin} többször van "
+                    f"használva: {used_pins[adc_input.pin]} "
+                    f"és ADC-bemenet: {adc_input.name}."
+                )
+
+            used_pins[adc_input.pin] = (
+                f"ADC-bemenet: {adc_input.name}"
+            )
 
         return self
 

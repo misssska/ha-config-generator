@@ -10,8 +10,11 @@ from app.schemas import (
     ESPHomeGenerateRequest,
     ESPHomeGenerateResponse,
     GeneratedFile,
+    GPIOADCInput,
     GPIOBinarySensor,
+    GPIOPWMOutput,
     GPIORelay,
+    GPIOStatusLED,
 )
 
 
@@ -267,6 +270,32 @@ def build_system_sensor_lines(
             ]
         )
 
+    board = BOARD_PROFILES[request.board]
+
+    for adc_input in request.adc_inputs:
+        adc_pin = (
+            "A0"
+            if board["platform"] == "esp8266"
+            else f"GPIO{adc_input.pin}"
+        )
+
+        sensor_lines.extend(
+            [
+                "  - platform: adc",
+                f"    pin: {adc_pin}",
+                f"    name: {yaml_string(adc_input.name)}",
+                (
+                    "    update_interval: "
+                    f"{adc_input.update_interval_s}s"
+                ),
+            ]
+        )
+
+        if board["platform"] == "esp32":
+            sensor_lines.append(
+                f"    attenuation: {adc_input.attenuation}"
+            )
+
     if not sensor_lines:
         return []
 
@@ -288,6 +317,81 @@ def build_system_button_lines(
         "button:",
         "  - platform: restart",
         '    name: "Eszköz újraindítása"',
+    ]
+
+
+def build_status_led_lines(
+    status_led: GPIOStatusLED | None,
+) -> list[str]:
+    if status_led is None:
+        return []
+
+    return [
+        "",
+        "status_led:",
+        "  pin:",
+        f"    number: GPIO{status_led.pin}",
+        f"    inverted: {yaml_bool(status_led.inverted)}",
+    ]
+
+
+def build_pwm_output_lines(
+    request: ESPHomeGenerateRequest,
+) -> list[str]:
+    if not request.pwm_outputs:
+        return []
+
+    board = BOARD_PROFILES[request.board]
+    platform = (
+        "ledc"
+        if board["platform"] == "esp32"
+        else "esp8266_pwm"
+    )
+
+    output_lines = [
+        "",
+        "output:",
+    ]
+    light_lines = [
+        "",
+        "light:",
+    ]
+
+    for index, pwm_output in enumerate(
+        request.pwm_outputs,
+        start=1,
+    ):
+        output_id = f"pwm_output_{index}"
+
+        output_lines.extend(
+            [
+                f"  - platform: {platform}",
+                "    pin:",
+                f"      number: GPIO{pwm_output.pin}",
+                (
+                    "      inverted: "
+                    f"{yaml_bool(pwm_output.inverted)}"
+                ),
+                f"    id: {output_id}",
+                (
+                    "    frequency: "
+                    f"{pwm_output.frequency_hz}Hz"
+                ),
+            ]
+        )
+
+        light_lines.extend(
+            [
+                "  - platform: monochromatic",
+                f"    name: {yaml_string(pwm_output.name)}",
+                f"    output: {output_id}",
+                "    restore_mode: ALWAYS_OFF",
+            ]
+        )
+
+    return [
+        *output_lines,
+        *light_lines,
     ]
 
 
@@ -412,10 +516,16 @@ def build_esphome_project(
     ]
 
     yaml_lines.extend(
+        build_status_led_lines(request.status_led)
+    )
+    yaml_lines.extend(
         build_system_sensor_lines(request)
     )
     yaml_lines.extend(
         build_system_button_lines(request)
+    )
+    yaml_lines.extend(
+        build_pwm_output_lines(request)
     )
     yaml_lines.extend(
         build_relay_lines(request.relays)
