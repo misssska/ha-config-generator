@@ -8,6 +8,7 @@ from app.schemas import (
     ESPHomeGenerateRequest,
     ESPHomeGenerateResponse,
     GeneratedFile,
+    GPIOBinarySensor,
     GPIORelay,
 )
 
@@ -106,6 +107,60 @@ def build_relay_lines(relays: list[GPIORelay]) -> list[str]:
     return lines
 
 
+def build_binary_sensor_lines(
+    binary_sensors: list[GPIOBinarySensor],
+) -> list[str]:
+    if not binary_sensors:
+        return []
+
+    lines = [
+        "",
+        "binary_sensor:",
+    ]
+
+    for index, sensor in enumerate(binary_sensors, start=1):
+        lines.extend(
+            [
+                "  - platform: gpio",
+                f"    name: {yaml_string(sensor.name)}",
+                f"    id: binary_input_{index}",
+                "    pin:",
+                f"      number: GPIO{sensor.pin}",
+                f"      inverted: {yaml_bool(sensor.inverted)}",
+                "      mode:",
+                "        input: true",
+            ]
+        )
+
+        if sensor.pull_mode == "PULLUP":
+            lines.append("        pullup: true")
+        elif sensor.pull_mode == "PULLDOWN":
+            lines.append("        pulldown: true")
+
+        if sensor.device_class is not None:
+            lines.append(
+                f"    device_class: {sensor.device_class}"
+            )
+
+        filters: list[str] = []
+
+        if sensor.delayed_on_ms > 0:
+            filters.append(
+                f"      - delayed_on: {sensor.delayed_on_ms}ms"
+            )
+
+        if sensor.delayed_off_ms > 0:
+            filters.append(
+                f"      - delayed_off: {sensor.delayed_off_ms}ms"
+            )
+
+        if filters:
+            lines.append("    filters:")
+            lines.extend(filters)
+
+    return lines
+
+
 def build_esphome_project(
     request: ESPHomeGenerateRequest,
 ) -> ESPHomeGenerateResponse:
@@ -151,6 +206,9 @@ def build_esphome_project(
         )
 
     yaml_lines.extend(build_relay_lines(request.relays))
+    yaml_lines.extend(
+        build_binary_sensor_lines(request.binary_sensors)
+    )
 
     yaml_content = "\n".join(yaml_lines).rstrip() + "\n"
 
