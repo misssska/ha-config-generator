@@ -7,15 +7,15 @@ import RelayEditor from "@/components/RelayEditor";
 import BinarySensorEditor from "@/components/BinarySensorEditor";
 import DeviceSettings from "@/components/DeviceSettings";
 import { useEsphomeForm } from "@/hooks/useEsphomeForm";
+import {
+  ESPHOME_API_URL,
+  fetchBoards,
+  generateEsphomeProject,
+} from "@/lib/esphome-api";
 import type {
   BoardOption,
   GeneratedFile,
-  GenerateResponse,
 } from "@/types/esphome";
-
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 export default function Home() {
   const [boards, setBoards] = useState<BoardOption[]>([]);
@@ -61,17 +61,7 @@ export default function Home() {
         setBoardsLoading(true);
         setError("");
 
-        const response = await fetch(`${API_URL}/api/esphome/boards`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(
-            `Az alaplapok lekérése sikertelen: HTTP ${response.status}`,
-          );
-        }
-
-        const data = (await response.json()) as BoardOption[];
+        const data = await fetchBoards(controller.signal);
 
         setBoards(data);
 
@@ -105,36 +95,6 @@ export default function Home() {
     };
   }, [setBoard]);
 
-  async function readApiError(response: Response): Promise<string> {
-    try {
-      const data = (await response.json()) as {
-        detail?:
-          | string
-          | {
-              msg?: string;
-            }[];
-      };
-
-      if (typeof data.detail === "string") {
-        return data.detail;
-      }
-
-      if (Array.isArray(data.detail)) {
-        const messages = data.detail
-          .map((item) => item.msg)
-          .filter((message): message is string => Boolean(message));
-
-        if (messages.length > 0) {
-          return messages.join(" ");
-        }
-      }
-    } catch {
-      // A válasz nem JSON-formátumú.
-    }
-
-    return `A generálás sikertelen: HTTP ${response.status}`;
-  }
-
   async function handleGenerate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -150,40 +110,15 @@ export default function Home() {
       setError("");
       setGeneratedFiles([]);
 
-      const response = await fetch(`${API_URL}/api/esphome/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          device_name: deviceName,
-          friendly_name: friendlyName,
-          board,
-          include_fallback_ap: includeFallbackAp,
-          relays: relays.map((relay) => ({
-            name: relay.name.trim(),
-            pin: relay.pin,
-            inverted: relay.inverted,
-            restore_mode: relay.restoreMode,
-          })),
-          binary_sensors: binarySensors.map((sensor) => ({
-            name: sensor.name.trim(),
-            pin: sensor.pin,
-            inverted: sensor.inverted,
-            pull_mode: sensor.pullMode,
-            device_class:
-              sensor.deviceClass === "" ? null : sensor.deviceClass,
-            delayed_on_ms: sensor.delayedOnMs,
-            delayed_off_ms: sensor.delayedOffMs,
-          })),
-        }),
+      const data = await generateEsphomeProject({
+        deviceName,
+        friendlyName,
+        board,
+        includeFallbackAp,
+        relays,
+        binarySensors,
       });
 
-      if (!response.ok) {
-        throw new Error(await readApiError(response));
-      }
-
-      const data = (await response.json()) as GenerateResponse;
       setGeneratedFiles(data.files);
     } catch (generateError) {
       setError(
@@ -293,7 +228,7 @@ export default function Home() {
             </form>
 
             <div className="mt-5 border-t border-slate-800 pt-4 text-xs text-slate-500">
-              Backend: {API_URL}
+              Backend: {ESPHOME_API_URL}
             </div>
           </section>
 
