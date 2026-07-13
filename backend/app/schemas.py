@@ -11,11 +11,34 @@ BoardId = Literal[
     "d1_mini",
 ]
 
+RestoreMode = Literal[
+    "ALWAYS_OFF",
+    "ALWAYS_ON",
+    "RESTORE_DEFAULT_OFF",
+    "RESTORE_DEFAULT_ON",
+]
+
 
 class BoardOption(BaseModel):
     id: BoardId
     label: str
     platform: Literal["esp32", "esp8266"]
+
+
+class GPIORelay(BaseModel):
+    name: str = Field(
+        min_length=1,
+        max_length=64,
+        examples=["Műhely világítás"],
+    )
+    pin: int = Field(
+        ge=0,
+        le=48,
+        description="A mikrovezérlő belső GPIO-száma.",
+        examples=[23],
+    )
+    inverted: bool = True
+    restore_mode: RestoreMode = "ALWAYS_OFF"
 
 
 class ESPHomeGenerateRequest(BaseModel):
@@ -33,6 +56,10 @@ class ESPHomeGenerateRequest(BaseModel):
     )
     board: BoardId = "esp32dev"
     include_fallback_ap: bool = True
+    relays: list[GPIORelay] = Field(
+        default_factory=list,
+        max_length=8,
+    )
 
 
 class GeneratedFile(BaseModel):

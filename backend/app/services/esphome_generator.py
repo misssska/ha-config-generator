@@ -8,6 +8,7 @@ from app.schemas import (
     ESPHomeGenerateRequest,
     ESPHomeGenerateResponse,
     GeneratedFile,
+    GPIORelay,
 )
 
 
@@ -40,6 +41,10 @@ def yaml_string(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+def yaml_bool(value: bool) -> str:
+    return "true" if value else "false"
+
+
 def generate_api_key() -> str:
     """32 bájtos, Base64-formátumú ESPHome API-kulcs."""
     return base64.b64encode(secrets.token_bytes(32)).decode("ascii")
@@ -56,7 +61,10 @@ def get_board_options() -> list[BoardOption]:
     ]
 
 
-def build_platform_lines(board_id: str, board: dict[str, Any]) -> list[str]:
+def build_platform_lines(
+    board_id: str,
+    board: dict[str, Any],
+) -> list[str]:
     platform = board["platform"]
 
     if platform == "esp32":
@@ -71,6 +79,31 @@ def build_platform_lines(board_id: str, board: dict[str, Any]) -> list[str]:
         "esp8266:",
         f"  board: {board_id}",
     ]
+
+
+def build_relay_lines(relays: list[GPIORelay]) -> list[str]:
+    if not relays:
+        return []
+
+    lines = [
+        "",
+        "switch:",
+    ]
+
+    for index, relay in enumerate(relays, start=1):
+        lines.extend(
+            [
+                "  - platform: gpio",
+                f"    name: {yaml_string(relay.name)}",
+                f"    id: relay_{index}",
+                "    pin:",
+                f"      number: GPIO{relay.pin}",
+                f"      inverted: {yaml_bool(relay.inverted)}",
+                f"    restore_mode: {relay.restore_mode}",
+            ]
+        )
+
+    return lines
 
 
 def build_esphome_project(
@@ -117,10 +150,12 @@ def build_esphome_project(
             ]
         )
 
+    yaml_lines.extend(build_relay_lines(request.relays))
+
     yaml_content = "\n".join(yaml_lines).rstrip() + "\n"
 
     secrets_lines = [
-        '# Töltsd ki a saját Wi-Fi adataiddal.',
+        "# Töltsd ki a saját Wi-Fi adataiddal.",
         f"wifi_ssid: {yaml_string('WIFI_NEVE')}",
         f"wifi_password: {yaml_string('WIFI_JELSZO')}",
         "",
