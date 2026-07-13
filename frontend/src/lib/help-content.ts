@@ -1,4 +1,18 @@
-﻿export const HELP = {
+export const HELP = {
+  deviceName: {
+    title: "ESPHome eszköznév",
+    description:
+      "Az eszköz egyedi technikai azonosítója az ESPHome konfigurációban és a hálózaton.",
+    details:
+      "Kizárólag kisbetűt, számot és kötőjelet használj. Ne kezdődjön vagy végződjön kötőjellel. Példa: muhely-vezerlo.",
+  },
+  friendlyName: {
+    title: "Megjelenített név",
+    description:
+      "Az eszköz ember számára könnyen olvasható neve, amely a Home Assistant felületén jelenik meg.",
+    details:
+      "Használhatsz szóközt és magyar ékezetes karaktereket is. Példa: Műhely vezérlő.",
+  },
   board: {
     title: "Alaplap kiválasztása",
     description:

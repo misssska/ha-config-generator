@@ -10,8 +10,7 @@ import {
 import GeneratedFilesPanel from "@/components/GeneratedFilesPanel";
 import RelayEditor from "@/components/RelayEditor";
 import BinarySensorEditor from "@/components/BinarySensorEditor";
-import HelpPopover from "@/components/HelpPopover";
-import { HELP } from "@/lib/help-content";
+import DeviceSettings from "@/components/DeviceSettings";
 import type {
   BinarySensorConfig,
   BoardOption,
@@ -633,119 +632,19 @@ export default function Home() {
         <div className="grid gap-6 lg:grid-cols-[470px_1fr]">
           <section className="h-fit rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
             <form className="space-y-7" onSubmit={handleGenerate}>
-              <section>
-                <h2 className="mb-5 text-xl font-semibold">
-                  Eszköz beállításai
-                </h2>
-
-                <div className="space-y-5">
-                  <div>
-                    <label
-                      className="mb-2 block text-sm font-medium text-slate-300"
-                      htmlFor="device-name"
-                    >
-                      ESPHome eszköznév
-                    </label>
-
-                    <input
-                      id="device-name"
-                      type="text"
-                      value={deviceName}
-                      onChange={(event) => setDeviceName(event.target.value)}
-                      minLength={1}
-                      maxLength={31}
-                      pattern="[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
-                      required
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 outline-none focus:border-blue-500"
-                    />
-
-                    <p className="mt-1.5 text-xs text-slate-500">
-                      Kisbetűk, számok és kötőjel használható.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label
-                      className="mb-2 block text-sm font-medium text-slate-300"
-                      htmlFor="friendly-name"
-                    >
-                      Megjelenített név
-                    </label>
-
-                    <input
-                      id="friendly-name"
-                      type="text"
-                      value={friendlyName}
-                      onChange={(event) =>
-                        setFriendlyName(event.target.value)
-                      }
-                      minLength={1}
-                      maxLength={64}
-                      required
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 outline-none focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      className="mb-2 flex items-center text-sm font-medium text-slate-300"
-                      htmlFor="board"
-                    >
-                      Alaplap
-                      <HelpPopover {...HELP.board} />
-                    </label>
-
-                    <select
-                      id="board"
-                      value={board}
-                      onChange={(event) =>
-                        handleBoardChange(event.target.value)
-                      }
-                      disabled={boardsLoading}
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 outline-none focus:border-blue-500 disabled:opacity-60"
-                    >
-                      {boardsLoading && (
-                        <option value="">Alaplapok betöltése...</option>
-                      )}
-
-                      {boards.map((boardOption) => (
-                        <option key={boardOption.id} value={boardOption.id}>
-                          {boardOption.label} – {boardOption.platform}
-                        </option>
-                      ))}
-                    </select>
-
-                    {currentBoard && (
-                      <p className="mt-1.5 text-xs text-slate-500">
-                        {currentBoard.pins.length} engedélyezett GPIO a
-                        profilban.
-                      </p>
-                    )}
-                  </div>
-
-                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-800 bg-slate-950 p-3">
-                    <input
-                      type="checkbox"
-                      checked={includeFallbackAp}
-                      onChange={(event) =>
-                        setIncludeFallbackAp(event.target.checked)
-                      }
-                      className="mt-1 h-4 w-4"
-                    />
-
-                    <span>
-                      <span className="flex items-center text-sm font-medium">
-                        Fallback Access Point
-                        <HelpPopover {...HELP.fallbackAccessPoint} />
-                      </span>
-
-                      <span className="mt-1 block text-xs text-slate-500">
-                        Hibás Wi-Fi-beállítás esetén saját hálózatot indít.
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </section>
+              <DeviceSettings
+                deviceName={deviceName}
+                friendlyName={friendlyName}
+                board={board}
+                includeFallbackAp={includeFallbackAp}
+                boards={boards}
+                boardsLoading={boardsLoading}
+                currentBoard={currentBoard}
+                onDeviceNameChange={setDeviceName}
+                onFriendlyNameChange={setFriendlyName}
+                onBoardChange={handleBoardChange}
+                onFallbackApChange={setIncludeFallbackAp}
+              />
               <RelayEditor
                 currentBoard={currentBoard}
                 relays={relays}
