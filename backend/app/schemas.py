@@ -63,6 +63,8 @@ class GPIOPinOption(BaseModel):
     can_output: bool
     supports_pullup: bool
     supports_pulldown: bool
+    supports_pwm: bool
+    supports_adc: bool
     warning: str | None = None
 
 

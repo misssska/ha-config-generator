@@ -1,4 +1,4 @@
-﻿from typing import Any
+from typing import Any
 
 
 def standard_pins(
@@ -8,11 +8,14 @@ def standard_pins(
     warnings: dict[int, str] | None = None,
     input_only: set[int] | None = None,
     no_internal_pull: set[int] | None = None,
+    pwm_on_outputs: bool = False,
+    adc_pins: set[int] | None = None,
 ) -> list[dict[str, Any]]:
     aliases = aliases or {}
     warnings = warnings or {}
     input_only = input_only or set()
     no_internal_pull = no_internal_pull or set()
+    adc_pins = adc_pins or set()
 
     return [
         {
@@ -22,6 +25,10 @@ def standard_pins(
             "can_output": number not in input_only,
             "supports_pullup": number not in no_internal_pull,
             "supports_pulldown": number not in no_internal_pull,
+            "supports_pwm": (
+                pwm_on_outputs and number not in input_only
+            ),
+            "supports_adc": number in adc_pins,
             "warning": warnings.get(number),
         }
         for number in numbers
@@ -63,9 +70,28 @@ def esp8266_pins() -> list[dict[str, Any]]:
                 "can_output": True,
                 "supports_pullup": number != 16,
                 "supports_pulldown": number == 16,
+                "supports_pwm": True,
+                "supports_adc": False,
                 "warning": warnings.get(number),
             }
         )
+
+    result.append(
+        {
+            "number": 17,
+            "label": "A0 / GPIO17 – analóg bemenet",
+            "can_input": False,
+            "can_output": False,
+            "supports_pullup": False,
+            "supports_pulldown": False,
+            "supports_pwm": False,
+            "supports_adc": True,
+            "warning": (
+                "Kizárólag analóg bemenet. "
+                "Digitális GPIO-ként nem használható."
+            ),
+        }
+    )
 
     return result
 
@@ -121,6 +147,11 @@ BOARD_PROFILES: dict[str, dict[str, Any]] = {
             warnings=ESP32_WARNINGS,
             input_only={34, 35, 36, 39},
             no_internal_pull={34, 35, 36, 39},
+            pwm_on_outputs=True,
+            adc_pins={
+                0, 2, 4, 12, 13, 14, 15,
+                25, 26, 27, 32, 33, 34, 35, 36, 39,
+            },
         ),
     },
     "esp32-c3-devkitm-1": {
@@ -130,6 +161,8 @@ BOARD_PROFILES: dict[str, dict[str, Any]] = {
         "pins": standard_pins(
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 21],
             warnings=ESP32_C3_WARNINGS,
+            pwm_on_outputs=True,
+            adc_pins={0, 1, 2, 3, 4, 5},
         ),
     },
     "esp32-s3-devkitc-1": {
@@ -145,6 +178,8 @@ BOARD_PROFILES: dict[str, dict[str, Any]] = {
                 45, 46, 47, 48,
             ],
             warnings=ESP32_S3_WARNINGS,
+            pwm_on_outputs=True,
+            adc_pins=set(range(1, 21)),
         ),
     },
     "nodemcuv2": {
