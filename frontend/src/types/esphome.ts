@@ -5,6 +5,8 @@ export type GPIOPinOption = {
   can_output: boolean;
   supports_pullup: boolean;
   supports_pulldown: boolean;
+  supports_pwm: boolean;
+  supports_adc: boolean;
   warning: string | null;
 };
 
@@ -68,6 +70,34 @@ export type BinarySensorConfig = {
   delayedOffMs: number;
 };
 
+
+export type StatusLedConfig = {
+  pin: number;
+  inverted: boolean;
+};
+
+export type PwmOutputConfig = {
+  clientId: number;
+  name: string;
+  pin: number;
+  inverted: boolean;
+  frequencyHz: number;
+};
+
+export type AdcAttenuation =
+  | "auto"
+  | "0db"
+  | "2.5db"
+  | "6db"
+  | "12db";
+
+export type AdcInputConfig = {
+  clientId: number;
+  name: string;
+  pin: number;
+  updateIntervalS: number;
+  attenuation: AdcAttenuation;
+};
 
 export type LoggerLevel =
   | "NONE"

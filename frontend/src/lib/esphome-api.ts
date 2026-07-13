@@ -1,9 +1,12 @@
 import type {
+  AdcInputConfig,
   BinarySensorConfig,
   BoardOption,
   GenerateResponse,
   NetworkSettingsConfig,
+  PwmOutputConfig,
   RelayConfig,
+  StatusLedConfig,
   SystemFeaturesConfig,
 } from "@/types/esphome";
 
@@ -17,6 +20,9 @@ export type GenerateProjectInput = {
   includeFallbackAp: boolean;
   networkSettings: NetworkSettingsConfig;
   systemFeatures: SystemFeaturesConfig;
+  statusLed: StatusLedConfig | null;
+  pwmOutputs: PwmOutputConfig[];
+  adcInputs: AdcInputConfig[];
   relays: RelayConfig[];
   binarySensors: BinarySensorConfig[];
 };
@@ -82,6 +88,9 @@ export async function generateEsphomeProject({
   includeFallbackAp,
   networkSettings,
   systemFeatures,
+  statusLed,
+  pwmOutputs,
+  adcInputs,
   relays,
   binarySensors,
 }: GenerateProjectInput): Promise<GenerateResponse> {
@@ -126,6 +135,24 @@ export async function generateEsphomeProject({
           systemFeatures.includeWifiSignalSensor,
         include_restart_button:
           systemFeatures.includeRestartButton,
+        status_led: statusLed
+          ? {
+              pin: statusLed.pin,
+              inverted: statusLed.inverted,
+            }
+          : null,
+        pwm_outputs: pwmOutputs.map((output) => ({
+          name: output.name.trim(),
+          pin: output.pin,
+          inverted: output.inverted,
+          frequency_hz: output.frequencyHz,
+        })),
+        adc_inputs: adcInputs.map((input) => ({
+          name: input.name.trim(),
+          pin: input.pin,
+          update_interval_s: input.updateIntervalS,
+          attenuation: input.attenuation,
+        })),
         relays: relays.map((relay) => ({
           name: relay.name.trim(),
           pin: relay.pin,

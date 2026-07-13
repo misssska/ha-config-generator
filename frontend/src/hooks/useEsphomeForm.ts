@@ -3,11 +3,14 @@
 import { useRef, useState } from "react";
 
 import type {
+  AdcInputConfig,
   BinarySensorConfig,
   BoardOption,
   GPIOPinOption,
   NetworkSettingsConfig,
+  PwmOutputConfig,
   RelayConfig,
+  StatusLedConfig,
   SystemFeaturesConfig,
 } from "@/types/esphome";
 
@@ -54,6 +57,17 @@ export function useEsphomeForm({
       includeRestartButton: true,
     });
 
+  const [statusLed, setStatusLed] =
+    useState<StatusLedConfig | null>(null);
+
+  const [pwmOutputs, setPwmOutputs] = useState<
+    PwmOutputConfig[]
+  >([]);
+
+  const [adcInputs, setAdcInputs] = useState<
+    AdcInputConfig[]
+  >([]);
+
   const [relays, setRelays] = useState<RelayConfig[]>([
     {
       clientId: 1,
@@ -81,6 +95,8 @@ export function useEsphomeForm({
 
   const nextRelayId = useRef(2);
   const nextBinarySensorId = useRef(2);
+  const nextPwmOutputId = useRef(1);
+  const nextAdcInputId = useRef(1);
 
   const resolvedBoard =
     boards.some(
@@ -105,11 +121,14 @@ export function useEsphomeForm({
     return new Set([
       ...relays.map((relay) => relay.pin),
       ...binarySensors.map((sensor) => sensor.pin),
+      ...(statusLed ? [statusLed.pin] : []),
+      ...pwmOutputs.map((output) => output.pin),
+      ...adcInputs.map((input) => input.pin),
     ]);
   }
 
   function findFreePin(
-    pinType: "input" | "output",
+    pinType: "input" | "output" | "pwm" | "adc",
   ): number | null {
     if (!currentBoard) {
       return null;
@@ -118,10 +137,12 @@ export function useEsphomeForm({
     const usedPins = getUsedPins();
 
     const pin = currentBoard.pins.find((pinOption) => {
-      const supportsType =
-        pinType === "output"
-          ? pinOption.can_output
-          : pinOption.can_input;
+      const supportsType = {
+        input: pinOption.can_input,
+        output: pinOption.can_output,
+        pwm: pinOption.supports_pwm,
+        adc: pinOption.supports_adc,
+      }[pinType];
 
       return supportsType && !usedPins.has(pinOption.number);
     });
@@ -138,29 +159,39 @@ export function useEsphomeForm({
       return;
     }
 
+    const targetBoard = nextBoard;
     const usedPins = new Set<number>();
+
+    function findCompatiblePin(
+      currentPin: number,
+      predicate: (pinOption: GPIOPinOption) => boolean,
+    ): GPIOPinOption | undefined {
+      return (
+        targetBoard.pins.find(
+          (pinOption) =>
+            pinOption.number === currentPin &&
+            predicate(pinOption) &&
+            !usedPins.has(pinOption.number),
+        ) ??
+        targetBoard.pins.find(
+          (pinOption) =>
+            predicate(pinOption) &&
+            !usedPins.has(pinOption.number),
+        )
+      );
+    }
+
     const nextRelays: RelayConfig[] = [];
-    const nextSensors: BinarySensorConfig[] = [];
 
     for (const relay of relays) {
-      let pinProfile = nextBoard.pins.find(
-        (pinOption) =>
-          pinOption.number === relay.pin &&
-          pinOption.can_output &&
-          !usedPins.has(pinOption.number),
+      const pinProfile = findCompatiblePin(
+        relay.pin,
+        (pinOption) => pinOption.can_output,
       );
 
       if (!pinProfile) {
-        pinProfile = nextBoard.pins.find(
-          (pinOption) =>
-            pinOption.can_output &&
-            !usedPins.has(pinOption.number),
-        );
-      }
-
-      if (!pinProfile) {
         onError(
-          `${nextBoard.label}: nincs elegendő szabad kimeneti GPIO a hozzáadott relékhez.`,
+          `${targetBoard.label}: nincs elegendő szabad kimeneti GPIO a hozzáadott relékhez.`,
         );
         return;
       }
@@ -173,25 +204,17 @@ export function useEsphomeForm({
       });
     }
 
+    const nextSensors: BinarySensorConfig[] = [];
+
     for (const sensor of binarySensors) {
-      let pinProfile = nextBoard.pins.find(
-        (pinOption) =>
-          pinOption.number === sensor.pin &&
-          pinOption.can_input &&
-          !usedPins.has(pinOption.number),
+      const pinProfile = findCompatiblePin(
+        sensor.pin,
+        (pinOption) => pinOption.can_input,
       );
 
       if (!pinProfile) {
-        pinProfile = nextBoard.pins.find(
-          (pinOption) =>
-            pinOption.can_input &&
-            !usedPins.has(pinOption.number),
-        );
-      }
-
-      if (!pinProfile) {
         onError(
-          `${nextBoard.label}: nincs elegendő szabad bemeneti GPIO a hozzáadott érzékelőkhöz.`,
+          `${targetBoard.label}: nincs elegendő szabad bemeneti GPIO a hozzáadott érzékelőkhöz.`,
         );
         return;
       }
@@ -221,10 +244,247 @@ export function useEsphomeForm({
       });
     }
 
+    let nextStatusLed = statusLed;
+
+    if (statusLed) {
+      const pinProfile = findCompatiblePin(
+        statusLed.pin,
+        (pinOption) => pinOption.can_output,
+      );
+
+      if (!pinProfile) {
+        onError(
+          `${targetBoard.label}: nincs szabad kimeneti GPIO a státusz-LED számára.`,
+        );
+        return;
+      }
+
+      usedPins.add(pinProfile.number);
+
+      nextStatusLed = {
+        ...statusLed,
+        pin: pinProfile.number,
+      };
+    }
+
+    const nextPwmOutputs: PwmOutputConfig[] = [];
+
+    for (const output of pwmOutputs) {
+      const pinProfile = findCompatiblePin(
+        output.pin,
+        (pinOption) => pinOption.supports_pwm,
+      );
+
+      if (!pinProfile) {
+        onError(
+          `${targetBoard.label}: nincs elegendő szabad PWM-kimenet.`,
+        );
+        return;
+      }
+
+      usedPins.add(pinProfile.number);
+
+      nextPwmOutputs.push({
+        ...output,
+        pin: pinProfile.number,
+      });
+    }
+
+    const nextAdcInputs: AdcInputConfig[] = [];
+
+    for (const input of adcInputs) {
+      const pinProfile = findCompatiblePin(
+        input.pin,
+        (pinOption) => pinOption.supports_adc,
+      );
+
+      if (!pinProfile) {
+        onError(
+          `${targetBoard.label}: nincs elegendő szabad ADC-bemenet.`,
+        );
+        return;
+      }
+
+      usedPins.add(pinProfile.number);
+
+      nextAdcInputs.push({
+        ...input,
+        pin: pinProfile.number,
+      });
+    }
+
     onError("");
     setBoard(nextBoardId);
     setRelays(nextRelays);
     setBinarySensors(nextSensors);
+    setStatusLed(nextStatusLed);
+    setPwmOutputs(nextPwmOutputs);
+    setAdcInputs(nextAdcInputs);
+    onClearGeneratedFiles();
+  }
+
+  function enableStatusLed() {
+    if (statusLed) {
+      return;
+    }
+
+    const freePin = findFreePin("output");
+
+    if (freePin === null) {
+      onError(
+        "A kiválasztott alaplapon nincs szabad GPIO a státusz-LED számára.",
+      );
+      return;
+    }
+
+    onError("");
+    setStatusLed({
+      pin: freePin,
+      inverted: true,
+    });
+    onClearGeneratedFiles();
+  }
+
+  function disableStatusLed() {
+    setStatusLed(null);
+    onError("");
+    onClearGeneratedFiles();
+  }
+
+  function updateStatusLed(
+    updates: Partial<StatusLedConfig>,
+  ) {
+    setStatusLed((currentStatusLed) =>
+      currentStatusLed
+        ? {
+            ...currentStatusLed,
+            ...updates,
+          }
+        : currentStatusLed,
+    );
+
+    onClearGeneratedFiles();
+  }
+
+  function addPwmOutput() {
+    if (pwmOutputs.length >= 8) {
+      onError(
+        "Legfeljebb 8 PWM-kimenet adható egy eszközhöz.",
+      );
+      return;
+    }
+
+    const freePin = findFreePin("pwm");
+
+    if (freePin === null) {
+      onError(
+        "A kiválasztott alaplapon nincs több szabad PWM-kimenet.",
+      );
+      return;
+    }
+
+    onError("");
+
+    setPwmOutputs((currentOutputs) => [
+      ...currentOutputs,
+      {
+        clientId: nextPwmOutputId.current++,
+        name: `PWM kimenet ${currentOutputs.length + 1}`,
+        pin: freePin,
+        inverted: false,
+        frequencyHz: 1000,
+      },
+    ]);
+
+    onClearGeneratedFiles();
+  }
+
+  function removePwmOutput(clientId: number) {
+    setPwmOutputs((currentOutputs) =>
+      currentOutputs.filter(
+        (output) => output.clientId !== clientId,
+      ),
+    );
+
+    onClearGeneratedFiles();
+  }
+
+  function updatePwmOutput(
+    clientId: number,
+    updates: Partial<Omit<PwmOutputConfig, "clientId">>,
+  ) {
+    setPwmOutputs((currentOutputs) =>
+      currentOutputs.map((output) =>
+        output.clientId === clientId
+          ? {
+              ...output,
+              ...updates,
+            }
+          : output,
+      ),
+    );
+
+    onClearGeneratedFiles();
+  }
+
+  function addAdcInput() {
+    if (adcInputs.length >= 8) {
+      onError(
+        "Legfeljebb 8 ADC-bemenet adható egy eszközhöz.",
+      );
+      return;
+    }
+
+    const freePin = findFreePin("adc");
+
+    if (freePin === null) {
+      onError(
+        "A kiválasztott alaplapon nincs több szabad ADC-bemenet.",
+      );
+      return;
+    }
+
+    onError("");
+
+    setAdcInputs((currentInputs) => [
+      ...currentInputs,
+      {
+        clientId: nextAdcInputId.current++,
+        name: `ADC bemenet ${currentInputs.length + 1}`,
+        pin: freePin,
+        updateIntervalS: 60,
+        attenuation: "auto",
+      },
+    ]);
+
+    onClearGeneratedFiles();
+  }
+
+  function removeAdcInput(clientId: number) {
+    setAdcInputs((currentInputs) =>
+      currentInputs.filter(
+        (input) => input.clientId !== clientId,
+      ),
+    );
+
+    onClearGeneratedFiles();
+  }
+
+  function updateAdcInput(
+    clientId: number,
+    updates: Partial<Omit<AdcInputConfig, "clientId">>,
+  ) {
+    setAdcInputs((currentInputs) =>
+      currentInputs.map((input) =>
+        input.clientId === clientId
+          ? {
+              ...input,
+              ...updates,
+            }
+          : input,
+      ),
+    );
+
     onClearGeneratedFiles();
   }
 
@@ -530,6 +790,98 @@ export function useEsphomeForm({
       usedPins.set(sensor.pin, `bemenet: ${name}`);
     }
 
+    if (statusLed) {
+      const pinProfile = currentBoard.pins.find(
+        (pinOption) => pinOption.number === statusLed.pin,
+      );
+
+      if (!pinProfile) {
+        return `GPIO${statusLed.pin} nem érhető el a kiválasztott alaplapon.`;
+      }
+
+      if (!pinProfile.can_output) {
+        return `GPIO${statusLed.pin} nem használható státusz-LED kimenetként.`;
+      }
+
+      const previousUsage = usedPins.get(statusLed.pin);
+
+      if (previousUsage) {
+        return `A GPIO${statusLed.pin} többször van használva: ${previousUsage} és státusz-LED.`;
+      }
+
+      usedPins.set(statusLed.pin, "státusz-LED");
+    }
+
+    for (const output of pwmOutputs) {
+      const name = output.name.trim();
+      const pinProfile = currentBoard.pins.find(
+        (pinOption) => pinOption.number === output.pin,
+      );
+
+      if (!name) {
+        return "Minden PWM-kimenetnek kötelező nevet adni.";
+      }
+
+      if (!pinProfile) {
+        return `GPIO${output.pin} nem érhető el a kiválasztott alaplapon.`;
+      }
+
+      if (!pinProfile.supports_pwm) {
+        return `GPIO${output.pin} nem támogat PWM-kimenetet.`;
+      }
+
+      if (
+        !Number.isInteger(output.frequencyHz) ||
+        output.frequencyHz < 10 ||
+        output.frequencyHz > 40000
+      ) {
+        return `${name}: a PWM-frekvencia 10 és 40000 Hz közötti egész szám lehet.`;
+      }
+
+      const previousUsage = usedPins.get(output.pin);
+
+      if (previousUsage) {
+        return `A GPIO${output.pin} többször van használva: ${previousUsage} és PWM-kimenet: ${name}.`;
+      }
+
+      usedPins.set(output.pin, `PWM-kimenet: ${name}`);
+    }
+
+    for (const input of adcInputs) {
+      const name = input.name.trim();
+      const pinProfile = currentBoard.pins.find(
+        (pinOption) => pinOption.number === input.pin,
+      );
+
+      if (!name) {
+        return "Minden ADC-bemenetnek kötelező nevet adni.";
+      }
+
+      if (!pinProfile) {
+        return `GPIO${input.pin} nem érhető el a kiválasztott alaplapon.`;
+      }
+
+      if (!pinProfile.supports_adc) {
+        return `GPIO${input.pin} nem támogat ADC-bemenetet.`;
+      }
+
+      if (
+        !Number.isInteger(input.updateIntervalS) ||
+        input.updateIntervalS < 1 ||
+        input.updateIntervalS > 3600
+      ) {
+        return `${name}: a frissítési idő 1 és 3600 másodperc közötti egész szám lehet.`;
+      }
+
+      const previousUsage = usedPins.get(input.pin);
+
+      if (previousUsage) {
+        return `A GPIO${input.pin} többször van használva: ${previousUsage} és ADC-bemenet: ${name}.`;
+      }
+
+      usedPins.set(input.pin, `ADC-bemenet: ${name}`);
+    }
+
     return null;
   }
 
@@ -546,6 +898,18 @@ export function useEsphomeForm({
     updateNetworkSettings,
     systemFeatures,
     updateSystemFeatures,
+    statusLed,
+    enableStatusLed,
+    disableStatusLed,
+    updateStatusLed,
+    pwmOutputs,
+    addPwmOutput,
+    removePwmOutput,
+    updatePwmOutput,
+    adcInputs,
+    addAdcInput,
+    removeAdcInput,
+    updateAdcInput,
     relays,
     binarySensors,
     currentBoard,
