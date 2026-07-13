@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.board_profiles import get_pin_profile
+
 
 BoardId = Literal[
     "esp32dev",
@@ -42,10 +44,21 @@ BinarySensorDeviceClass = Literal[
 ]
 
 
+class GPIOPinOption(BaseModel):
+    number: int
+    label: str
+    can_input: bool
+    can_output: bool
+    supports_pullup: bool
+    supports_pulldown: bool
+    warning: str | None = None
+
+
 class BoardOption(BaseModel):
     id: BoardId
     label: str
     platform: Literal["esp32", "esp8266"]
+    pins: list[GPIOPinOption]
 
 
 class GPIORelay(BaseModel):
@@ -57,7 +70,6 @@ class GPIORelay(BaseModel):
     pin: int = Field(
         ge=0,
         le=48,
-        description="A mikrovezérlő belső GPIO-száma.",
         examples=[23],
     )
     inverted: bool = True
@@ -73,7 +85,6 @@ class GPIOBinarySensor(BaseModel):
     pin: int = Field(
         ge=0,
         le=48,
-        description="A mikrovezérlő belső GPIO-száma.",
         examples=[22],
     )
     inverted: bool = True
@@ -96,7 +107,6 @@ class ESPHomeGenerateRequest(BaseModel):
         min_length=1,
         max_length=31,
         pattern=r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$",
-        description="Kisbetűs eszköznév, szóköz nélkül.",
         examples=["muhely-vezerlo"],
     )
     friendly_name: str = Field(
@@ -116,12 +126,26 @@ class ESPHomeGenerateRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_unique_gpio_assignments(
+    def validate_gpio_assignments(
         self,
     ) -> "ESPHomeGenerateRequest":
         used_pins: dict[int, str] = {}
 
         for relay in self.relays:
+            pin_profile = get_pin_profile(self.board, relay.pin)
+
+            if pin_profile is None:
+                raise ValueError(
+                    f"GPIO{relay.pin} nem érhető el a kiválasztott "
+                    f"{self.board} alaplapon."
+                )
+
+            if not pin_profile["can_output"]:
+                raise ValueError(
+                    f"GPIO{relay.pin} csak bemenetként használható, "
+                    f"ezért nem vezérelhet relét."
+                )
+
             if relay.pin in used_pins:
                 raise ValueError(
                     f"GPIO{relay.pin} többször van használva: "
@@ -131,6 +155,35 @@ class ESPHomeGenerateRequest(BaseModel):
             used_pins[relay.pin] = f"relé: {relay.name}"
 
         for sensor in self.binary_sensors:
+            pin_profile = get_pin_profile(self.board, sensor.pin)
+
+            if pin_profile is None:
+                raise ValueError(
+                    f"GPIO{sensor.pin} nem érhető el a kiválasztott "
+                    f"{self.board} alaplapon."
+                )
+
+            if not pin_profile["can_input"]:
+                raise ValueError(
+                    f"GPIO{sensor.pin} nem használható digitális bemenetként."
+                )
+
+            if (
+                sensor.pull_mode == "PULLUP"
+                and not pin_profile["supports_pullup"]
+            ):
+                raise ValueError(
+                    f"GPIO{sensor.pin} nem támogat belső PULLUP ellenállást."
+                )
+
+            if (
+                sensor.pull_mode == "PULLDOWN"
+                and not pin_profile["supports_pulldown"]
+            ):
+                raise ValueError(
+                    f"GPIO{sensor.pin} nem támogat belső PULLDOWN ellenállást."
+                )
+
             if sensor.pin in used_pins:
                 raise ValueError(
                     f"GPIO{sensor.pin} többször van használva: "
