@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRef, useState } from "react";
 
@@ -55,8 +55,15 @@ export function useEsphomeForm({
   const nextRelayId = useRef(2);
   const nextBinarySensorId = useRef(2);
 
+  const resolvedBoard =
+    boards.some(
+      (boardOption) => boardOption.id === board,
+    )
+      ? board
+      : (boards[0]?.id ?? board);
+
   const currentBoard = boards.find(
-    (boardOption) => boardOption.id === board,
+    (boardOption) => boardOption.id === resolvedBoard,
   );
 
   function getPinProfile(
@@ -447,7 +454,7 @@ export function useEsphomeForm({
     setDeviceName,
     friendlyName,
     setFriendlyName,
-    board,
+    board: resolvedBoard,
     setBoard,
     includeFallbackAp,
     setIncludeFallbackAp,

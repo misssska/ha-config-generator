@@ -1,23 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import GeneratedFilesPanel from "@/components/GeneratedFilesPanel";
 import RelayEditor from "@/components/RelayEditor";
 import BinarySensorEditor from "@/components/BinarySensorEditor";
 import DeviceSettings from "@/components/DeviceSettings";
 import { useEsphomeForm } from "@/hooks/useEsphomeForm";
+import { useEsphomeBoards } from "@/hooks/useEsphomeBoards";
 import { useEsphomeGeneration } from "@/hooks/useEsphomeGeneration";
-import {
-  ESPHOME_API_URL,
-  fetchBoards,
-} from "@/lib/esphome-api";
-import type { BoardOption } from "@/types/esphome";
+import { ESPHOME_API_URL } from "@/lib/esphome-api";
 
 export default function Home() {
-  const [boards, setBoards] = useState<BoardOption[]>([]);
-  const [boardsLoading, setBoardsLoading] = useState(true);
-
   const {
     generatedFiles,
     generating,
@@ -30,12 +22,18 @@ export default function Home() {
   } = useEsphomeGeneration();
 
   const {
+    boards,
+    boardsLoading,
+  } = useEsphomeBoards({
+    onError: setError,
+  });
+
+  const {
     deviceName,
     setDeviceName,
     friendlyName,
     setFriendlyName,
     board,
-    setBoard,
     includeFallbackAp,
     setIncludeFallbackAp,
     relays,
@@ -57,47 +55,6 @@ export default function Home() {
   });
 
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadBoards() {
-      try {
-        setBoardsLoading(true);
-        setError("");
-
-        const data = await fetchBoards(controller.signal);
-
-        setBoards(data);
-
-        setBoard((currentBoardId) =>
-          data.some((item) => item.id === currentBoardId)
-            ? currentBoardId
-            : (data[0]?.id ?? currentBoardId),
-        );
-      } catch (loadError) {
-        if (
-          loadError instanceof DOMException &&
-          loadError.name === "AbortError"
-        ) {
-          return;
-        }
-
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Ismeretlen hiba történt.",
-        );
-      } finally {
-        setBoardsLoading(false);
-      }
-    }
-
-    void loadBoards();
-
-    return () => {
-      controller.abort();
-    };
-  }, [setBoard, setError]);
 
   const handleGenerate = createGenerateHandler(
     {
@@ -196,7 +153,6 @@ export default function Home() {
     </main>
   );
 }
-
 
 
 
