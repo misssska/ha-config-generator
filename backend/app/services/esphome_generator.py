@@ -1,4 +1,4 @@
-﻿import base64
+import base64
 import json
 import secrets
 from typing import Any
@@ -60,6 +60,187 @@ def build_platform_lines(
         "esp8266:",
         f"  board: {esphome_board}",
     ]
+
+
+def build_service_lines(
+    request: ESPHomeGenerateRequest,
+    api_secret: str,
+    ota_secret: str,
+) -> list[str]:
+    lines = [
+        "logger:",
+        f"  level: {request.logger_level}",
+    ]
+
+    if request.api_encryption_enabled:
+        lines.extend(
+            [
+                "",
+                "api:",
+                "  encryption:",
+                f"    key: !secret {api_secret}",
+            ]
+        )
+
+    if request.ota_enabled:
+        lines.extend(
+            [
+                "",
+                "ota:",
+                "  - platform: esphome",
+                f"    password: !secret {ota_secret}",
+            ]
+        )
+
+    return lines
+
+
+def build_wifi_lines(
+    request: ESPHomeGenerateRequest,
+    fallback_secret: str,
+) -> list[str]:
+    lines = ["wifi:"]
+
+    if request.wifi_use_secrets:
+        lines.extend(
+            [
+                "  ssid: !secret wifi_ssid",
+                "  password: !secret wifi_password",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                (
+                    "  ssid: "
+                    + yaml_string(request.wifi_ssid)
+                ),
+                (
+                    "  password: "
+                    + yaml_string(request.wifi_password)
+                ),
+            ]
+        )
+
+    if request.use_static_ip:
+        lines.extend(
+            [
+                "  manual_ip:",
+                f"    static_ip: {request.static_ip}",
+                f"    gateway: {request.gateway}",
+                f"    subnet: {request.subnet}",
+            ]
+        )
+
+        if request.dns1 is not None:
+            lines.append(
+                f"    dns1: {request.dns1}"
+            )
+
+        if request.dns2 is not None:
+            lines.append(
+                f"    dns2: {request.dns2}"
+            )
+
+    if request.include_fallback_ap:
+        fallback_ssid = (
+            request.fallback_ap_ssid
+            or request.friendly_name + " Fallback"
+        )
+
+        lines.extend(
+            [
+                "",
+                "  ap:",
+                (
+                    "    ssid: "
+                    + yaml_string(fallback_ssid)
+                ),
+                (
+                    "    password: !secret "
+                    + fallback_secret
+                ),
+                "",
+                "captive_portal:",
+            ]
+        )
+
+    return lines
+
+
+def build_secrets_lines(
+    request: ESPHomeGenerateRequest,
+    api_secret: str,
+    ota_secret: str,
+    fallback_secret: str,
+) -> list[str]:
+    lines: list[str] = []
+
+    if request.wifi_use_secrets:
+        lines.extend(
+            [
+                "# Wi-Fi adatok.",
+                (
+                    "wifi_ssid: "
+                    + yaml_string(request.wifi_ssid)
+                ),
+                (
+                    "wifi_password: "
+                    + yaml_string(request.wifi_password)
+                ),
+            ]
+        )
+
+    generated_lines: list[str] = []
+
+    if request.api_encryption_enabled:
+        generated_lines.append(
+            (
+                f"{api_secret}: "
+                + yaml_string(generate_api_key())
+            )
+        )
+
+    if request.ota_enabled:
+        generated_lines.append(
+            (
+                f"{ota_secret}: "
+                + yaml_string(
+                    secrets.token_urlsafe(24)
+                )
+            )
+        )
+
+    if request.include_fallback_ap:
+        fallback_password = (
+            request.fallback_ap_password
+            or secrets.token_urlsafe(12)
+        )
+
+        generated_lines.append(
+            (
+                f"{fallback_secret}: "
+                + yaml_string(fallback_password)
+            )
+        )
+
+    if generated_lines:
+        if lines:
+            lines.append("")
+
+        lines.append(
+            "# Automatikusan generált vagy megadott "
+            "eszközspecifikus kulcsok."
+        )
+        lines.extend(generated_lines)
+
+    if not lines:
+        lines.append(
+            "# Ehhez a konfigurációhoz nincs "
+            "szükség secret értékre."
+        )
+
+    return lines
 
 
 def build_relay_lines(relays: list[GPIORelay]) -> list[str]:
@@ -145,74 +326,75 @@ def build_esphome_project(
     request: ESPHomeGenerateRequest,
 ) -> ESPHomeGenerateResponse:
     board = BOARD_PROFILES[request.board]
-    secret_prefix = request.device_name.replace("-", "_")
+    secret_prefix = request.device_name.replace(
+        "-",
+        "_",
+    )
 
-    api_secret = f"{secret_prefix}_api_encryption_key"
-    ota_secret = f"{secret_prefix}_ota_password"
-    fallback_secret = f"{secret_prefix}_fallback_ap_password"
+    api_secret = (
+        f"{secret_prefix}_api_encryption_key"
+    )
+    ota_secret = (
+        f"{secret_prefix}_ota_password"
+    )
+    fallback_secret = (
+        f"{secret_prefix}_fallback_ap_password"
+    )
 
     yaml_lines = [
         "esphome:",
         f"  name: {request.device_name}",
-        f"  friendly_name: {yaml_string(request.friendly_name)}",
+        (
+            "  friendly_name: "
+            + yaml_string(request.friendly_name)
+        ),
         "",
         *build_platform_lines(board),
         "",
-        "logger:",
+        *build_service_lines(
+            request,
+            api_secret,
+            ota_secret,
+        ),
         "",
-        "api:",
-        "  encryption:",
-        f"    key: !secret {api_secret}",
-        "",
-        "ota:",
-        "  - platform: esphome",
-        f"    password: !secret {ota_secret}",
-        "",
-        "wifi:",
-        "  ssid: !secret wifi_ssid",
-        "  password: !secret wifi_password",
+        *build_wifi_lines(
+            request,
+            fallback_secret,
+        ),
     ]
 
-    if request.include_fallback_ap:
-        yaml_lines.extend(
-            [
-                "",
-                "  ap:",
-                f"    ssid: {yaml_string(request.friendly_name + ' Fallback')}",
-                f"    password: !secret {fallback_secret}",
-                "",
-                "captive_portal:",
-            ]
-        )
-
-    yaml_lines.extend(build_relay_lines(request.relays))
     yaml_lines.extend(
-        build_binary_sensor_lines(request.binary_sensors)
+        build_relay_lines(request.relays)
+    )
+    yaml_lines.extend(
+        build_binary_sensor_lines(
+            request.binary_sensors
+        )
     )
 
-    yaml_content = "\n".join(yaml_lines).rstrip() + "\n"
+    yaml_content = (
+        "\n".join(yaml_lines).rstrip()
+        + "\n"
+    )
 
-    secrets_lines = [
-        "# Töltsd ki a saját Wi-Fi adataiddal.",
-        f"wifi_ssid: {yaml_string('WIFI_NEVE')}",
-        f"wifi_password: {yaml_string('WIFI_JELSZO')}",
-        "",
-        "# Automatikusan generált, eszközspecifikus kulcsok.",
-        f"{api_secret}: {yaml_string(generate_api_key())}",
-        f"{ota_secret}: {yaml_string(secrets.token_urlsafe(24))}",
-    ]
-
-    if request.include_fallback_ap:
-        secrets_lines.append(
-            f"{fallback_secret}: {yaml_string(secrets.token_urlsafe(12))}"
-        )
-
-    secrets_content = "\n".join(secrets_lines).rstrip() + "\n"
+    secrets_content = (
+        "\n".join(
+            build_secrets_lines(
+                request,
+                api_secret,
+                ota_secret,
+                fallback_secret,
+            )
+        ).rstrip()
+        + "\n"
+    )
 
     return ESPHomeGenerateResponse(
         files=[
             GeneratedFile(
-                filename=f"{request.device_name}.yaml",
+                filename=(
+                    f"{request.device_name}.yaml"
+                ),
                 content=yaml_content,
             ),
             GeneratedFile(
@@ -221,4 +403,3 @@ def build_esphome_project(
             ),
         ]
     )
-

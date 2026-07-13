@@ -1,4 +1,5 @@
-﻿from typing import Literal
+from ipaddress import IPv4Address
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -25,6 +26,17 @@ InputPullMode = Literal[
     "PULLUP",
     "PULLDOWN",
 ]
+
+LoggerLevel = Literal[
+    "NONE",
+    "ERROR",
+    "WARN",
+    "INFO",
+    "DEBUG",
+    "VERBOSE",
+    "VERY_VERBOSE",
+]
+
 
 BinarySensorDeviceClass = Literal[
     "door",
@@ -115,7 +127,37 @@ class ESPHomeGenerateRequest(BaseModel):
         examples=["Műhely vezérlő"],
     )
     board: BoardId = "esp32dev"
+    wifi_use_secrets: bool = True
+    wifi_ssid: str = Field(
+        default="WIFI_NEVE",
+        min_length=1,
+        max_length=32,
+    )
+    wifi_password: str = Field(
+        default="WIFI_JELSZO",
+        min_length=8,
+        max_length=63,
+    )
+    use_static_ip: bool = False
+    static_ip: IPv4Address | None = None
+    gateway: IPv4Address | None = None
+    subnet: IPv4Address | None = None
+    dns1: IPv4Address | None = None
+    dns2: IPv4Address | None = None
     include_fallback_ap: bool = True
+    fallback_ap_ssid: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=32,
+    )
+    fallback_ap_password: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=63,
+    )
+    api_encryption_enabled: bool = True
+    ota_enabled: bool = True
+    logger_level: LoggerLevel = "DEBUG"
     relays: list[GPIORelay] = Field(
         default_factory=list,
         max_length=8,
@@ -130,6 +172,26 @@ class ESPHomeGenerateRequest(BaseModel):
         self,
     ) -> "ESPHomeGenerateRequest":
         used_pins: dict[int, str] = {}
+        if self.use_static_ip:
+            missing_fields: list[str] = []
+
+            if self.static_ip is None:
+                missing_fields.append("statikus IP")
+            if self.gateway is None:
+                missing_fields.append("átjáró")
+            if self.subnet is None:
+                missing_fields.append(
+                    "alhálózati maszk"
+                )
+
+            if missing_fields:
+                raise ValueError(
+                    "Statikus IP használatakor "
+                    "kötelező megadni: "
+                    + ", ".join(missing_fields)
+                    + "."
+                )
+
 
         for relay in self.relays:
             pin_profile = get_pin_profile(self.board, relay.pin)
