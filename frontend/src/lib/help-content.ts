@@ -90,4 +90,102 @@ export const HELP = {
     details:
       "PULLUP és GND-re záró kapcsoló esetén a fizikai aktív állapot LOW, ezért általában szükséges az invertálás.",
   },
+  wifiUseSecrets: {
+    title: "Wi-Fi-adatok tárolása",
+    description:
+      "Bekapcsolva az SSID és a Wi-Fi-jelszó a secrets.yaml fájlba kerül.",
+    details:
+      "Ez az ajánlott megoldás, mert a fő eszközkonfiguráció nem tartalmazza közvetlenül a hozzáférési adatokat.",
+  },
+  wifiSsid: {
+    title: "Wi-Fi SSID",
+    description:
+      "Annak a 2,4 GHz-es Wi-Fi-hálózatnak a pontos neve, amelyhez az ESP-eszköz csatlakozik.",
+    details:
+      "A kis- és nagybetűk számítanak. Az ESP8266 és a legtöbb ESP32 nem használ 5 GHz-es Wi-Fi-hálózatot.",
+  },
+  wifiPassword: {
+    title: "Wi-Fi-jelszó",
+    description:
+      "A kiválasztott Wi-Fi-hálózathoz tartozó jelszó.",
+    details:
+      "Legalább 8 és legfeljebb 63 karakter. Éles konfigurációban használd a secrets.yaml tárolást.",
+  },
+  staticIpEnabled: {
+    title: "Statikus IP-cím",
+    description:
+      "Az eszköz DHCP helyett mindig a megadott IP-címet használja.",
+    details:
+      "Az IP-cím ne ütközzön más eszközzel. A legbiztonságosabb, ha a router DHCP-tartományán kívüli címet vagy DHCP-foglalást használsz.",
+  },
+  staticIp: {
+    title: "Eszköz IP-címe",
+    description:
+      "Az ESPHome-eszköz állandó IPv4-címe a helyi hálózaton.",
+    details:
+      "Példa: 192.168.1.50. Ugyanabba az alhálózatba kell tartoznia, mint az átjárónak.",
+  },
+  gateway: {
+    title: "Alapértelmezett átjáró",
+    description:
+      "Általában a helyi router IPv4-címe.",
+    details:
+      "Példa: 192.168.1.1. Ezen keresztül éri el az eszköz a helyi hálózaton kívüli címeket.",
+  },
+  subnet: {
+    title: "Alhálózati maszk",
+    description:
+      "Meghatározza, hogy mely IP-címek tartoznak a helyi hálózathoz.",
+    details:
+      "Otthoni és kisebb üzemi hálózatokban leggyakrabban 255.255.255.0.",
+  },
+  dns1: {
+    title: "Elsődleges DNS",
+    description:
+      "A domainnevek IP-címre fordításához elsőként használt DNS-kiszolgáló.",
+    details:
+      "Általában megadható a router címe. Üresen az ESPHome alapértelmezett működése érvényesül.",
+  },
+  dns2: {
+    title: "Másodlagos DNS",
+    description:
+      "Tartalék DNS-kiszolgáló, ha az elsődleges nem érhető el.",
+    details:
+      "Példa: 1.1.1.1 vagy 8.8.8.8. A mező nem kötelező.",
+  },
+  fallbackApSsid: {
+    title: "Fallback AP neve",
+    description:
+      "Annak a mentő Wi-Fi-hálózatnak a neve, amelyet az eszköz kapcsolódási hiba esetén indít.",
+    details:
+      "Üresen a rendszer a megjelenített névből automatikusan állítja elő.",
+  },
+  fallbackApPassword: {
+    title: "Fallback AP jelszava",
+    description:
+      "A mentő Wi-Fi-hálózat hozzáférési jelszava.",
+    details:
+      "Üresen biztonságos véletlen jelszó készül. Saját jelszó esetén legalább 8 karakter szükséges.",
+  },
+  apiEncryption: {
+    title: "Home Assistant API-titkosítás",
+    description:
+      "Titkosítja az ESPHome natív API-kommunikációját.",
+    details:
+      "Ajánlott bekapcsolva hagyni. A rendszer automatikusan létrehozza a szükséges titkosítási kulcsot.",
+  },
+  ota: {
+    title: "OTA-frissítés",
+    description:
+      "Lehetővé teszi a firmware vezeték nélküli frissítését.",
+    details:
+      "Ajánlott bekapcsolva hagyni. A generátor automatikusan biztonságos OTA-jelszót készít.",
+  },
+  loggerLevel: {
+    title: "Naplózási szint",
+    description:
+      "Meghatározza, mennyi diagnosztikai információt írjon ki az ESPHome.",
+    details:
+      "Általános használatra INFO vagy DEBUG ajánlott. A VERBOSE szintek növelhetik a memória- és processzorterhelést.",
+  },
 } as const;

@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   BinaryDeviceClass,
   PullMode,
   RestoreMode,
@@ -64,3 +64,17 @@ export const DEVICE_CLASS_OPTIONS: {
   { value: "tamper", label: "Szabotázs" },
   { value: "running", label: "Üzemelés" },
 ];
+
+
+export const LOGGER_LEVEL_OPTIONS = [
+  { value: "NONE", label: "Kikapcsolva – NONE" },
+  { value: "ERROR", label: "Csak hibák – ERROR" },
+  { value: "WARN", label: "Figyelmeztetések – WARN" },
+  { value: "INFO", label: "Információk – INFO" },
+  { value: "DEBUG", label: "Hibakeresés – DEBUG" },
+  { value: "VERBOSE", label: "Részletes – VERBOSE" },
+  {
+    value: "VERY_VERBOSE",
+    label: "Nagyon részletes – VERY_VERBOSE",
+  },
+] as const;

@@ -1,4 +1,4 @@
-﻿export type GPIOPinOption = {
+export type GPIOPinOption = {
   number: number;
   label: string;
   can_input: boolean;
@@ -66,4 +66,31 @@ export type BinarySensorConfig = {
   deviceClass: BinaryDeviceClass;
   delayedOnMs: number;
   delayedOffMs: number;
+};
+
+
+export type LoggerLevel =
+  | "NONE"
+  | "ERROR"
+  | "WARN"
+  | "INFO"
+  | "DEBUG"
+  | "VERBOSE"
+  | "VERY_VERBOSE";
+
+export type NetworkSettingsConfig = {
+  wifiUseSecrets: boolean;
+  wifiSsid: string;
+  wifiPassword: string;
+  useStaticIp: boolean;
+  staticIp: string;
+  gateway: string;
+  subnet: string;
+  dns1: string;
+  dns2: string;
+  fallbackApSsid: string;
+  fallbackApPassword: string;
+  apiEncryptionEnabled: boolean;
+  otaEnabled: boolean;
+  loggerLevel: LoggerLevel;
 };

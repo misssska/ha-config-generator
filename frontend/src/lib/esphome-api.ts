@@ -2,6 +2,7 @@ import type {
   BinarySensorConfig,
   BoardOption,
   GenerateResponse,
+  NetworkSettingsConfig,
   RelayConfig,
 } from "@/types/esphome";
 
@@ -13,6 +14,7 @@ export type GenerateProjectInput = {
   friendlyName: string;
   board: string;
   includeFallbackAp: boolean;
+  networkSettings: NetworkSettingsConfig;
   relays: RelayConfig[];
   binarySensors: BinarySensorConfig[];
 };
@@ -76,6 +78,7 @@ export async function generateEsphomeProject({
   friendlyName,
   board,
   includeFallbackAp,
+  networkSettings,
   relays,
   binarySensors,
 }: GenerateProjectInput): Promise<GenerateResponse> {
@@ -91,6 +94,29 @@ export async function generateEsphomeProject({
         friendly_name: friendlyName,
         board,
         include_fallback_ap: includeFallbackAp,
+        wifi_use_secrets: networkSettings.wifiUseSecrets,
+        wifi_ssid: networkSettings.wifiSsid.trim(),
+        wifi_password: networkSettings.wifiPassword,
+        use_static_ip: networkSettings.useStaticIp,
+        static_ip: networkSettings.useStaticIp
+          ? networkSettings.staticIp.trim()
+          : null,
+        gateway: networkSettings.useStaticIp
+          ? networkSettings.gateway.trim()
+          : null,
+        subnet: networkSettings.useStaticIp
+          ? networkSettings.subnet.trim()
+          : null,
+        dns1: networkSettings.dns1.trim() || null,
+        dns2: networkSettings.dns2.trim() || null,
+        fallback_ap_ssid:
+          networkSettings.fallbackApSsid.trim() || null,
+        fallback_ap_password:
+          networkSettings.fallbackApPassword || null,
+        api_encryption_enabled:
+          networkSettings.apiEncryptionEnabled,
+        ota_enabled: networkSettings.otaEnabled,
+        logger_level: networkSettings.loggerLevel,
         relays: relays.map((relay) => ({
           name: relay.name.trim(),
           pin: relay.pin,

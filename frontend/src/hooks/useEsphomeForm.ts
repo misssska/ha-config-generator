@@ -6,6 +6,7 @@ import type {
   BinarySensorConfig,
   BoardOption,
   GPIOPinOption,
+  NetworkSettingsConfig,
   RelayConfig,
 } from "@/types/esphome";
 
@@ -26,6 +27,24 @@ export function useEsphomeForm({
   const [board, setBoard] = useState("esp32dev");
   const [includeFallbackAp, setIncludeFallbackAp] =
     useState(true);
+
+  const [networkSettings, setNetworkSettings] =
+    useState<NetworkSettingsConfig>({
+      wifiUseSecrets: true,
+      wifiSsid: "WIFI_NEVE",
+      wifiPassword: "WIFI_JELSZO",
+      useStaticIp: false,
+      staticIp: "",
+      gateway: "",
+      subnet: "255.255.255.0",
+      dns1: "",
+      dns2: "",
+      fallbackApSsid: "",
+      fallbackApPassword: "",
+      apiEncryptionEnabled: true,
+      otaEnabled: true,
+      loggerLevel: "DEBUG",
+    });
 
   const [relays, setRelays] = useState<RelayConfig[]>([
     {
@@ -355,9 +374,55 @@ export function useEsphomeForm({
     );
   }
 
+  function updateNetworkSettings(
+    updates: Partial<NetworkSettingsConfig>,
+  ) {
+    setNetworkSettings((currentSettings) => ({
+      ...currentSettings,
+      ...updates,
+    }));
+
+    onClearGeneratedFiles();
+  }
+
   function validateHardware(): string | null {
     if (!currentBoard) {
       return "A kiválasztott alaplap GPIO-profilja nem érhető el.";
+    }
+
+    if (!networkSettings.wifiSsid.trim()) {
+      return "A Wi-Fi SSID megadása kötelező.";
+    }
+
+    if (
+      networkSettings.wifiPassword.length < 8 ||
+      networkSettings.wifiPassword.length > 63
+    ) {
+      return "A Wi-Fi-jelszó 8 és 63 karakter közötti lehet.";
+    }
+
+    if (
+      includeFallbackAp &&
+      networkSettings.fallbackApPassword.length > 0 &&
+      networkSettings.fallbackApPassword.length < 8
+    ) {
+      return "A fallback AP jelszava legalább 8 karakter legyen.";
+    }
+
+    if (networkSettings.useStaticIp) {
+      const requiredIpValues = [
+        networkSettings.staticIp,
+        networkSettings.gateway,
+        networkSettings.subnet,
+      ];
+
+      if (
+        requiredIpValues.some(
+          (value) => !value.trim(),
+        )
+      ) {
+        return "Statikus IP használatakor az IP-cím, az átjáró és az alhálózati maszk kötelező.";
+      }
     }
 
     const usedPins = new Map<number, string>();
@@ -458,6 +523,8 @@ export function useEsphomeForm({
     setBoard,
     includeFallbackAp,
     setIncludeFallbackAp,
+    networkSettings,
+    updateNetworkSettings,
     relays,
     binarySensors,
     currentBoard,
