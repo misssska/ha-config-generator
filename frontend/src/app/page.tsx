@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import GeneratedFilesPanel from "@/components/GeneratedFilesPanel";
 import HelpPopover from "@/components/HelpPopover";
 import {
   DEVICE_CLASS_OPTIONS,
@@ -1256,58 +1257,11 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <h2 className="text-xl font-semibold">Generált fájlok</h2>
-
-              <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">
-                {generatedFiles.length} fájl
-              </span>
-            </div>
-
-            {generatedFiles.length === 0 && (
-              <div className="flex min-h-80 items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-8 text-center text-slate-500">
-                A generált ESPHome-fájlok itt jelennek meg.
-              </div>
-            )}
-
-            <div className="space-y-6">
-              {generatedFiles.map((file) => (
-                <article
-                  key={file.filename}
-                  className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
-                    <h3 className="font-mono text-sm font-semibold text-emerald-300">
-                      {file.filename}
-                    </h3>
-
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void copyFile(file.content)}
-                        className="rounded-md border border-slate-700 px-3 py-1.5 text-xs hover:bg-slate-800"
-                      >
-                        Másolás
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => downloadFile(file)}
-                        className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium hover:bg-emerald-500"
-                      >
-                        Letöltés
-                      </button>
-                    </div>
-                  </div>
-
-                  <pre className="max-h-[720px] overflow-auto p-4 text-sm leading-6 text-slate-300">
-                    <code>{file.content}</code>
-                  </pre>
-                </article>
-              ))}
-            </div>
-          </section>
+          <GeneratedFilesPanel
+            generatedFiles={generatedFiles}
+            onCopy={copyFile}
+            onDownload={downloadFile}
+          />
         </div>
       </div>
     </main>
