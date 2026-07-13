@@ -28,12 +28,42 @@ type RestoreMode =
   | "RESTORE_DEFAULT_OFF"
   | "RESTORE_DEFAULT_ON";
 
+type PullMode = "NONE" | "PULLUP" | "PULLDOWN";
+
+type BinaryDeviceClass =
+  | ""
+  | "door"
+  | "window"
+  | "garage_door"
+  | "opening"
+  | "motion"
+  | "occupancy"
+  | "safety"
+  | "problem"
+  | "smoke"
+  | "moisture"
+  | "gas"
+  | "vibration"
+  | "tamper"
+  | "running";
+
 type RelayConfig = {
   clientId: number;
   name: string;
   pin: number;
   inverted: boolean;
   restoreMode: RestoreMode;
+};
+
+type BinarySensorConfig = {
+  clientId: number;
+  name: string;
+  pin: number;
+  inverted: boolean;
+  pullMode: PullMode;
+  deviceClass: BinaryDeviceClass;
+  delayedOnMs: number;
+  delayedOffMs: number;
 };
 
 const API_URL =
@@ -53,17 +83,56 @@ const RESTORE_OPTIONS: {
   },
   {
     value: "RESTORE_DEFAULT_OFF",
-    label: "Előző állapot visszaállítása, alapból KI",
+    label: "Előző állapot, alapból KI",
   },
   {
     value: "RESTORE_DEFAULT_ON",
-    label: "Előző állapot visszaállítása, alapból BE",
+    label: "Előző állapot, alapból BE",
   },
 ];
 
+const PULL_OPTIONS: {
+  value: PullMode;
+  label: string;
+}[] = [
+  {
+    value: "NONE",
+    label: "Nincs belső ellenállás",
+  },
+  {
+    value: "PULLUP",
+    label: "Belső felhúzás – PULLUP",
+  },
+  {
+    value: "PULLDOWN",
+    label: "Belső lehúzás – PULLDOWN",
+  },
+];
+
+const DEVICE_CLASS_OPTIONS: {
+  value: BinaryDeviceClass;
+  label: string;
+}[] = [
+  { value: "", label: "Nincs megadva" },
+  { value: "door", label: "Ajtó" },
+  { value: "window", label: "Ablak" },
+  { value: "garage_door", label: "Garázsajtó" },
+  { value: "opening", label: "Nyílás" },
+  { value: "motion", label: "Mozgás" },
+  { value: "occupancy", label: "Jelenlét" },
+  { value: "safety", label: "Biztonsági érzékelő" },
+  { value: "problem", label: "Hiba" },
+  { value: "smoke", label: "Füst" },
+  { value: "moisture", label: "Nedvesség" },
+  { value: "gas", label: "Gáz" },
+  { value: "vibration", label: "Rezgés" },
+  { value: "tamper", label: "Szabotázs" },
+  { value: "running", label: "Üzemelés" },
+];
+
 export default function Home() {
-  const [deviceName, setDeviceName] = useState("muhely-rele");
-  const [friendlyName, setFriendlyName] = useState("Műhely relé");
+  const [deviceName, setDeviceName] = useState("muhely-vezerlo");
+  const [friendlyName, setFriendlyName] = useState("Műhely vezérlő");
   const [board, setBoard] = useState("esp32dev");
   const [includeFallbackAp, setIncludeFallbackAp] = useState(true);
 
@@ -77,7 +146,21 @@ export default function Home() {
     },
   ]);
 
+  const [binarySensors, setBinarySensors] = useState<BinarySensorConfig[]>([
+    {
+      clientId: 1,
+      name: "Műhelyajtó",
+      pin: 22,
+      inverted: true,
+      pullMode: "PULLUP",
+      deviceClass: "door",
+      delayedOnMs: 20,
+      delayedOffMs: 20,
+    },
+  ]);
+
   const nextRelayId = useRef(2);
+  const nextBinarySensorId = useRef(2);
 
   const [boards, setBoards] = useState<BoardOption[]>([]);
   const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
@@ -131,13 +214,30 @@ export default function Home() {
     };
   }, []);
 
+  function getUsedPins(): Set<number> {
+    return new Set([
+      ...relays.map((relay) => relay.pin),
+      ...binarySensors.map((sensor) => sensor.pin),
+    ]);
+  }
+
+  function findFreePin(preferredPins: number[]): number {
+    const usedPins = getUsedPins();
+
+    return (
+      preferredPins.find((pin) => !usedPins.has(pin)) ??
+      Array.from({ length: 49 }, (_, index) => index).find(
+        (pin) => !usedPins.has(pin),
+      ) ??
+      0
+    );
+  }
+
   function addRelay() {
     if (relays.length >= 8) {
       setError("Legfeljebb 8 relé adható egy eszközhöz.");
       return;
     }
-
-    const relayNumber = relays.length + 1;
 
     setError("");
 
@@ -145,8 +245,10 @@ export default function Home() {
       ...currentRelays,
       {
         clientId: nextRelayId.current++,
-        name: `Relé ${relayNumber}`,
-        pin: 23,
+        name: `Relé ${currentRelays.length + 1}`,
+        pin: findFreePin([
+          23, 22, 21, 19, 18, 17, 16, 27, 26, 25, 33, 32, 14, 13,
+        ]),
         inverted: true,
         restoreMode: "ALWAYS_OFF",
       },
@@ -175,35 +277,152 @@ export default function Home() {
     );
   }
 
-  function validateRelays(): string | null {
-    const usedPins = new Set<number>();
+  function addBinarySensor() {
+    if (binarySensors.length >= 16) {
+      setError("Legfeljebb 16 digitális bemenet adható egy eszközhöz.");
+      return;
+    }
+
+    setError("");
+
+    setBinarySensors((currentSensors) => [
+      ...currentSensors,
+      {
+        clientId: nextBinarySensorId.current++,
+        name: `Digitális bemenet ${currentSensors.length + 1}`,
+        pin: findFreePin([
+          22, 21, 19, 18, 17, 16, 27, 26, 25, 33, 32, 14, 13, 12, 4, 5,
+        ]),
+        inverted: true,
+        pullMode: "PULLUP",
+        deviceClass: "",
+        delayedOnMs: 20,
+        delayedOffMs: 20,
+      },
+    ]);
+  }
+
+  function removeBinarySensor(clientId: number) {
+    setBinarySensors((currentSensors) =>
+      currentSensors.filter((sensor) => sensor.clientId !== clientId),
+    );
+  }
+
+  function updateBinarySensor(
+    clientId: number,
+    updates: Partial<Omit<BinarySensorConfig, "clientId">>,
+  ) {
+    setBinarySensors((currentSensors) =>
+      currentSensors.map((sensor) =>
+        sensor.clientId === clientId
+          ? {
+              ...sensor,
+              ...updates,
+            }
+          : sensor,
+      ),
+    );
+  }
+
+  function validateHardware(): string | null {
+    const usedPins = new Map<number, string>();
 
     for (const relay of relays) {
-      if (!relay.name.trim()) {
+      const name = relay.name.trim();
+
+      if (!name) {
         return "Minden relének kötelező nevet adni.";
       }
 
       if (!Number.isInteger(relay.pin) || relay.pin < 0 || relay.pin > 48) {
-        return `${relay.name}: a GPIO csak 0 és 48 közötti egész szám lehet.`;
+        return `${name}: a GPIO csak 0 és 48 közötti egész szám lehet.`;
       }
 
-      if (usedPins.has(relay.pin)) {
-        return `A GPIO${relay.pin} több reléhez is hozzá van rendelve.`;
+      const previousUsage = usedPins.get(relay.pin);
+
+      if (previousUsage) {
+        return `A GPIO${relay.pin} többször van használva: ${previousUsage} és relé: ${name}.`;
       }
 
-      usedPins.add(relay.pin);
+      usedPins.set(relay.pin, `relé: ${name}`);
+    }
+
+    for (const sensor of binarySensors) {
+      const name = sensor.name.trim();
+
+      if (!name) {
+        return "Minden digitális bemenetnek kötelező nevet adni.";
+      }
+
+      if (!Number.isInteger(sensor.pin) || sensor.pin < 0 || sensor.pin > 48) {
+        return `${name}: a GPIO csak 0 és 48 közötti egész szám lehet.`;
+      }
+
+      if (
+        !Number.isInteger(sensor.delayedOnMs) ||
+        sensor.delayedOnMs < 0 ||
+        sensor.delayedOnMs > 10000
+      ) {
+        return `${name}: a bekapcsolási késleltetés 0 és 10000 ms közötti egész szám lehet.`;
+      }
+
+      if (
+        !Number.isInteger(sensor.delayedOffMs) ||
+        sensor.delayedOffMs < 0 ||
+        sensor.delayedOffMs > 10000
+      ) {
+        return `${name}: a kikapcsolási késleltetés 0 és 10000 ms közötti egész szám lehet.`;
+      }
+
+      const previousUsage = usedPins.get(sensor.pin);
+
+      if (previousUsage) {
+        return `A GPIO${sensor.pin} többször van használva: ${previousUsage} és bemenet: ${name}.`;
+      }
+
+      usedPins.set(sensor.pin, `bemenet: ${name}`);
     }
 
     return null;
   }
 
+  async function readApiError(response: Response): Promise<string> {
+    try {
+      const data = (await response.json()) as {
+        detail?:
+          | string
+          | {
+              msg?: string;
+            }[];
+      };
+
+      if (typeof data.detail === "string") {
+        return data.detail;
+      }
+
+      if (Array.isArray(data.detail)) {
+        const messages = data.detail
+          .map((item) => item.msg)
+          .filter((message): message is string => Boolean(message));
+
+        if (messages.length > 0) {
+          return messages.join(" ");
+        }
+      }
+    } catch {
+      // A válasz nem JSON-formátumú.
+    }
+
+    return `A generálás sikertelen: HTTP ${response.status}`;
+  }
+
   async function handleGenerate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const relayValidationError = validateRelays();
+    const validationError = validateHardware();
 
-    if (relayValidationError) {
-      setError(relayValidationError);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -228,16 +447,21 @@ export default function Home() {
             inverted: relay.inverted,
             restore_mode: relay.restoreMode,
           })),
+          binary_sensors: binarySensors.map((sensor) => ({
+            name: sensor.name.trim(),
+            pin: sensor.pin,
+            inverted: sensor.inverted,
+            pull_mode: sensor.pullMode,
+            device_class:
+              sensor.deviceClass === "" ? null : sensor.deviceClass,
+            delayed_on_ms: sensor.delayedOnMs,
+            delayed_off_ms: sensor.delayedOffMs,
+          })),
         }),
       });
 
       if (!response.ok) {
-        const responseText = await response.text();
-
-        throw new Error(
-          responseText ||
-            `A generálás sikertelen: HTTP ${response.status}`,
-        );
+        throw new Error(await readApiError(response));
       }
 
       const data = (await response.json()) as GenerateResponse;
@@ -292,15 +516,15 @@ export default function Home() {
           </h1>
 
           <p className="mt-3 max-w-3xl text-slate-400">
-            Állítsd össze az ESPHome-eszköz konfigurációját, majd töltsd le a
-            kész YAML- és secrets-fájlokat.
+            Állítsd össze az ESPHome-eszközt, majd töltsd le a kész
+            konfigurációs fájlokat.
           </p>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[430px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[460px_1fr]">
           <section className="h-fit rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
             <form className="space-y-7" onSubmit={handleGenerate}>
-              <div>
+              <section>
                 <h2 className="mb-5 text-xl font-semibold">
                   Eszköz beállításai
                 </h2>
@@ -323,7 +547,7 @@ export default function Home() {
                       maxLength={31}
                       pattern="[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                       required
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 outline-none focus:border-blue-500"
                     />
 
                     <p className="mt-1.5 text-xs text-slate-500">
@@ -343,11 +567,13 @@ export default function Home() {
                       id="friendly-name"
                       type="text"
                       value={friendlyName}
-                      onChange={(event) => setFriendlyName(event.target.value)}
+                      onChange={(event) =>
+                        setFriendlyName(event.target.value)
+                      }
                       minLength={1}
                       maxLength={64}
                       required
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 outline-none focus:border-blue-500"
                     />
                   </div>
 
@@ -364,7 +590,7 @@ export default function Home() {
                       value={board}
                       onChange={(event) => setBoard(event.target.value)}
                       disabled={boardsLoading}
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-wait disabled:opacity-60"
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 outline-none focus:border-blue-500 disabled:opacity-60"
                     >
                       {boardsLoading && (
                         <option value="">Alaplapok betöltése...</option>
@@ -394,21 +620,19 @@ export default function Home() {
                       </span>
 
                       <span className="mt-1 block text-xs text-slate-500">
-                        Hibás Wi-Fi-beállítás esetén az ESP saját hálózatot
-                        indít.
+                        Hibás Wi-Fi-beállítás esetén saját hálózatot indít.
                       </span>
                     </span>
                   </label>
                 </div>
-              </div>
+              </section>
 
-              <div className="border-t border-slate-800 pt-6">
+              <section className="border-t border-slate-800 pt-6">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-semibold">GPIO-relék</h2>
-
                     <p className="mt-1 text-xs text-slate-500">
-                      Legfeljebb 8 relékimenet adható hozzá.
+                      Legfeljebb 8 relékimenet.
                     </p>
                   </div>
 
@@ -416,17 +640,11 @@ export default function Home() {
                     type="button"
                     onClick={addRelay}
                     disabled={relays.length >= 8}
-                    className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-sm font-medium text-blue-300 transition hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-sm text-blue-300 disabled:opacity-40"
                   >
                     + Relé
                   </button>
                 </div>
-
-                {relays.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/50 p-5 text-center text-sm text-slate-500">
-                    Nincs hozzáadott relé.
-                  </div>
-                )}
 
                 <div className="space-y-4">
                   {relays.map((relay, index) => (
@@ -442,7 +660,7 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={() => removeRelay(relay.clientId)}
-                          className="rounded-md border border-red-500/30 px-2.5 py-1 text-xs text-red-300 transition hover:bg-red-500/10"
+                          className="rounded-md border border-red-500/30 px-2.5 py-1 text-xs text-red-300"
                         >
                           Törlés
                         </button>
@@ -459,15 +677,12 @@ export default function Home() {
 
                           <input
                             id={`relay-name-${relay.clientId}`}
-                            type="text"
                             value={relay.name}
                             onChange={(event) =>
                               updateRelay(relay.clientId, {
                                 name: event.target.value,
                               })
                             }
-                            minLength={1}
-                            maxLength={64}
                             required
                             className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
                           />
@@ -501,20 +716,21 @@ export default function Home() {
                         <div>
                           <label
                             className="mb-1.5 block text-sm text-slate-300"
-                            htmlFor={`restore-mode-${relay.clientId}`}
+                            htmlFor={`restore-${relay.clientId}`}
                           >
                             Indulási állapot
                           </label>
 
                           <select
-                            id={`restore-mode-${relay.clientId}`}
+                            id={`restore-${relay.clientId}`}
                             value={relay.restoreMode}
                             onChange={(event) =>
                               updateRelay(relay.clientId, {
-                                restoreMode: event.target.value as RestoreMode,
+                                restoreMode:
+                                  event.target.value as RestoreMode,
                               })
                             }
-                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none"
                           >
                             {RESTORE_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>
@@ -540,9 +756,8 @@ export default function Home() {
                             <span className="block text-sm font-medium">
                               Fordított működés
                             </span>
-
                             <span className="block text-xs text-slate-500">
-                              Aktív alacsony szintű relémodulhoz.
+                              Aktív alacsony relémodulhoz.
                             </span>
                           </span>
                         </label>
@@ -550,12 +765,250 @@ export default function Home() {
                     </article>
                   ))}
                 </div>
-              </div>
+              </section>
+
+              <section className="border-t border-slate-800 pt-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-semibold">
+                      Digitális bemenetek
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Nyomógomb, ajtó, végállás vagy mozgásérzékelő.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addBinarySensor}
+                    disabled={binarySensors.length >= 16}
+                    className="rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-sm text-violet-300 disabled:opacity-40"
+                  >
+                    + Bemenet
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {binarySensors.map((sensor, index) => (
+                    <article
+                      key={sensor.clientId}
+                      className="rounded-xl border border-slate-700 bg-slate-950 p-4"
+                    >
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="font-semibold text-violet-300">
+                          Bemenet {index + 1}
+                        </h3>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeBinarySensor(sensor.clientId)
+                          }
+                          className="rounded-md border border-red-500/30 px-2.5 py-1 text-xs text-red-300"
+                        >
+                          Törlés
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label
+                            className="mb-1.5 block text-sm text-slate-300"
+                            htmlFor={`sensor-name-${sensor.clientId}`}
+                          >
+                            Home Assistant-név
+                          </label>
+
+                          <input
+                            id={`sensor-name-${sensor.clientId}`}
+                            value={sensor.name}
+                            onChange={(event) =>
+                              updateBinarySensor(sensor.clientId, {
+                                name: event.target.value,
+                              })
+                            }
+                            required
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            className="mb-1.5 block text-sm text-slate-300"
+                            htmlFor={`sensor-pin-${sensor.clientId}`}
+                          >
+                            GPIO
+                          </label>
+
+                          <input
+                            id={`sensor-pin-${sensor.clientId}`}
+                            type="number"
+                            value={sensor.pin}
+                            onChange={(event) =>
+                              updateBinarySensor(sensor.clientId, {
+                                pin: Number(event.target.value),
+                              })
+                            }
+                            min={0}
+                            max={48}
+                            step={1}
+                            required
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            className="mb-1.5 block text-sm text-slate-300"
+                            htmlFor={`pull-mode-${sensor.clientId}`}
+                          >
+                            Belső ellenállás
+                          </label>
+
+                          <select
+                            id={`pull-mode-${sensor.clientId}`}
+                            value={sensor.pullMode}
+                            onChange={(event) =>
+                              updateBinarySensor(sensor.clientId, {
+                                pullMode: event.target.value as PullMode,
+                              })
+                            }
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none"
+                          >
+                            {PULL_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label
+                            className="mb-1.5 block text-sm text-slate-300"
+                            htmlFor={`device-class-${sensor.clientId}`}
+                          >
+                            Eszközosztály
+                          </label>
+
+                          <select
+                            id={`device-class-${sensor.clientId}`}
+                            value={sensor.deviceClass}
+                            onChange={(event) =>
+                              updateBinarySensor(sensor.clientId, {
+                                deviceClass:
+                                  event.target.value as BinaryDeviceClass,
+                              })
+                            }
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none"
+                          >
+                            {DEVICE_CLASS_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label
+                              className="mb-1.5 block text-sm text-slate-300"
+                              htmlFor={`delayed-on-${sensor.clientId}`}
+                            >
+                              Bekapcsolási szűrés
+                            </label>
+
+                            <div className="relative">
+                              <input
+                                id={`delayed-on-${sensor.clientId}`}
+                                type="number"
+                                value={sensor.delayedOnMs}
+                                onChange={(event) =>
+                                  updateBinarySensor(sensor.clientId, {
+                                    delayedOnMs: Number(event.target.value),
+                                  })
+                                }
+                                min={0}
+                                max={10000}
+                                step={1}
+                                required
+                                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 pr-10 outline-none"
+                              />
+                              <span className="absolute right-3 top-2 text-sm text-slate-500">
+                                ms
+                              </span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label
+                              className="mb-1.5 block text-sm text-slate-300"
+                              htmlFor={`delayed-off-${sensor.clientId}`}
+                            >
+                              Kikapcsolási szűrés
+                            </label>
+
+                            <div className="relative">
+                              <input
+                                id={`delayed-off-${sensor.clientId}`}
+                                type="number"
+                                value={sensor.delayedOffMs}
+                                onChange={(event) =>
+                                  updateBinarySensor(sensor.clientId, {
+                                    delayedOffMs: Number(event.target.value),
+                                  })
+                                }
+                                min={0}
+                                max={10000}
+                                step={1}
+                                required
+                                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 pr-10 outline-none"
+                              />
+                              <span className="absolute right-3 top-2 text-sm text-slate-500">
+                                ms
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-3">
+                          <input
+                            type="checkbox"
+                            checked={sensor.inverted}
+                            onChange={(event) =>
+                              updateBinarySensor(sensor.clientId, {
+                                inverted: event.target.checked,
+                              })
+                            }
+                            className="h-4 w-4"
+                          />
+
+                          <span>
+                            <span className="block text-sm font-medium">
+                              Fordított működés
+                            </span>
+                            <span className="block text-xs text-slate-500">
+                              Például GND-re kapcsoló PULLUP bemenethez.
+                            </span>
+                          </span>
+                        </label>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              {error && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+                  {error}
+                </div>
+              )}
 
               <button
                 type="submit"
                 disabled={generating || boardsLoading}
-                className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700"
               >
                 {generating
                   ? "Generálás..."
@@ -577,13 +1030,7 @@ export default function Home() {
               </span>
             </div>
 
-            {error && (
-              <div className="mb-5 overflow-auto rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
-                {error}
-              </div>
-            )}
-
-            {generatedFiles.length === 0 && !error && (
+            {generatedFiles.length === 0 && (
               <div className="flex min-h-80 items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-8 text-center text-slate-500">
                 A generált ESPHome-fájlok itt jelennek meg.
               </div>
@@ -604,7 +1051,7 @@ export default function Home() {
                       <button
                         type="button"
                         onClick={() => void copyFile(file.content)}
-                        className="rounded-md border border-slate-700 px-3 py-1.5 text-xs transition hover:bg-slate-800"
+                        className="rounded-md border border-slate-700 px-3 py-1.5 text-xs hover:bg-slate-800"
                       >
                         Másolás
                       </button>
@@ -612,14 +1059,14 @@ export default function Home() {
                       <button
                         type="button"
                         onClick={() => downloadFile(file)}
-                        className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium transition hover:bg-emerald-500"
+                        className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium hover:bg-emerald-500"
                       >
                         Letöltés
                       </button>
                     </div>
                   </div>
 
-                  <pre className="max-h-[620px] overflow-auto p-4 text-sm leading-6 text-slate-300">
+                  <pre className="max-h-[720px] overflow-auto p-4 text-sm leading-6 text-slate-300">
                     <code>{file.content}</code>
                   </pre>
                 </article>
