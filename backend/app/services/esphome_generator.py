@@ -243,6 +243,54 @@ def build_secrets_lines(
     return lines
 
 
+def build_system_sensor_lines(
+    request: ESPHomeGenerateRequest,
+) -> list[str]:
+    sensor_lines: list[str] = []
+
+    if request.include_uptime_sensor:
+        sensor_lines.extend(
+            [
+                "  - platform: uptime",
+                "    type: seconds",
+                '    name: "Üzemidő"',
+                "    update_interval: 60s",
+            ]
+        )
+
+    if request.include_wifi_signal_sensor:
+        sensor_lines.extend(
+            [
+                "  - platform: wifi_signal",
+                '    name: "Wi-Fi jelerősség"',
+                "    update_interval: 60s",
+            ]
+        )
+
+    if not sensor_lines:
+        return []
+
+    return [
+        "",
+        "sensor:",
+        *sensor_lines,
+    ]
+
+
+def build_system_button_lines(
+    request: ESPHomeGenerateRequest,
+) -> list[str]:
+    if not request.include_restart_button:
+        return []
+
+    return [
+        "",
+        "button:",
+        "  - platform: restart",
+        '    name: "Eszköz újraindítása"',
+    ]
+
+
 def build_relay_lines(relays: list[GPIORelay]) -> list[str]:
     if not relays:
         return []
@@ -363,6 +411,12 @@ def build_esphome_project(
         ),
     ]
 
+    yaml_lines.extend(
+        build_system_sensor_lines(request)
+    )
+    yaml_lines.extend(
+        build_system_button_lines(request)
+    )
     yaml_lines.extend(
         build_relay_lines(request.relays)
     )

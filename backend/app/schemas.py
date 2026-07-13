@@ -158,6 +158,9 @@ class ESPHomeGenerateRequest(BaseModel):
     api_encryption_enabled: bool = True
     ota_enabled: bool = True
     logger_level: LoggerLevel = "DEBUG"
+    include_uptime_sensor: bool = True
+    include_wifi_signal_sensor: bool = True
+    include_restart_button: bool = True
     relays: list[GPIORelay] = Field(
         default_factory=list,
         max_length=8,
