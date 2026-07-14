@@ -13,6 +13,7 @@ import BoardPinout, {
 import ConfigurationManager from "@/components/ConfigurationManager";
 import DeviceSettings from "@/components/DeviceSettings";
 import GeneratedProjectDrawer from "@/components/GeneratedProjectDrawer";
+import LanguageSelector from "@/components/LanguageSelector";
 import NetworkSystemSettings from "@/components/NetworkSystemSettings";
 import PwmOutputEditor from "@/components/PwmOutputEditor";
 import RelayEditor from "@/components/RelayEditor";
@@ -22,9 +23,11 @@ import WorkspaceNavigation from "@/components/WorkspaceNavigation";
 import { useEsphomeBoards } from "@/hooks/useEsphomeBoards";
 import { useEsphomeForm } from "@/hooks/useEsphomeForm";
 import { useEsphomeGeneration } from "@/hooks/useEsphomeGeneration";
+import { useLanguage } from "@/i18n/LanguageProvider";
 import { ESPHOME_API_URL } from "@/lib/esphome-api";
 
 export default function Home() {
+  const { t } = useLanguage();
   const [activeSettingsTab, setActiveSettingsTab] =
     useState<SettingsTabId>("device");
 
@@ -152,18 +155,22 @@ export default function Home() {
               </div>
 
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                ESPHome konfigurációgenerátor
+                {t("app.title")}
               </h1>
 
               <p className="mt-2 text-sm text-slate-500">
-                Hardver, GPIO-k és automatizálások
-                egyetlen munkafelületen.
+                {t("app.subtitle")}
               </p>
             </div>
 
-            <span className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-[10px] text-slate-500">
-              Backend: {ESPHOME_API_URL}
-            </span>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <LanguageSelector />
+
+              <span className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-[10px] text-slate-500">
+                {t("app.backend")}:{" "}
+                {ESPHOME_API_URL}
+              </span>
+            </div>
           </div>
         </header>
 
@@ -337,14 +344,13 @@ export default function Home() {
                   "automations" && (
                   <section className="rounded-xl border border-dashed border-blue-500/40 bg-blue-500/5 p-6">
                     <h2 className="text-xl font-semibold text-blue-100">
-                      Automatizálások
+                      {t("app.automations.title")}
                     </h2>
 
                     <p className="mt-2 text-sm leading-6 text-slate-400">
-                      A következő fejlesztési
-                      csomagban ide kerül a vizuális
-                      trigger–feltétel–művelet
-                      szerkesztő.
+                      {t(
+                        "app.automations.description",
+                      )}
                     </p>
                   </section>
                 )}

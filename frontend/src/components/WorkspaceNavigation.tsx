@@ -1,7 +1,13 @@
+
 "use client";
 
 import SettingsTabs from "@/components/SettingsTabs";
-import type { SettingsTabId } from "@/components/BoardPinout";
+import type {
+  SettingsTabId,
+} from "@/components/BoardPinout";
+import {
+  useLanguage,
+} from "@/i18n/LanguageProvider";
 
 type WorkspaceNavigationProps = {
   activeTab: SettingsTabId;
@@ -16,7 +22,9 @@ type WorkspaceNavigationProps = {
   binarySensorCount: number;
   pwmCount: number;
   adcCount: number;
-  onTabChange: (tabId: SettingsTabId) => void;
+  onTabChange: (
+    tabId: SettingsTabId,
+  ) => void;
   onOpenResults: () => void;
 };
 
@@ -36,8 +44,13 @@ export default function WorkspaceNavigation({
   onTabChange,
   onOpenResults,
 }: WorkspaceNavigationProps) {
-  const outputCount = relayCount + pwmCount;
-  const inputCount = binarySensorCount + adcCount;
+  const { t } = useLanguage();
+
+  const outputCount =
+    relayCount + pwmCount;
+
+  const inputCount =
+    binarySensorCount + adcCount;
 
   return (
     <section className="sticky top-2 z-30 -mx-4 border-y border-slate-700/80 bg-slate-900/95 px-3 py-3 shadow-xl shadow-slate-950/50 backdrop-blur sm:-mx-6 sm:px-6">
@@ -55,22 +68,34 @@ export default function WorkspaceNavigation({
             />
 
             <strong className="truncate text-sm">
-              {deviceName.trim() || "Névtelen eszköz"}
+              {deviceName.trim() ||
+                t("workspace.unnamedDevice")}
             </strong>
           </div>
 
           <p className="mt-1 truncate text-[10px] text-slate-500">
-            {boardLabel ?? "Alaplap betöltése..."}
+            {boardLabel ??
+              t("workspace.loadingBoard")}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           <span className="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[9px] text-emerald-200 sm:inline-flex">
-            {outputCount} kimenet
+            {t(
+              "workspace.outputCount",
+              {
+                count: outputCount,
+              },
+            )}
           </span>
 
           <span className="hidden rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[9px] text-violet-200 sm:inline-flex">
-            {inputCount} bemenet
+            {t(
+              "workspace.inputCount",
+              {
+                count: inputCount,
+              },
+            )}
           </span>
 
           <button
@@ -78,7 +103,12 @@ export default function WorkspaceNavigation({
             onClick={onOpenResults}
             className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/20"
           >
-            Eredmény ({generatedFileCount})
+            {t(
+              "workspace.results",
+              {
+                count: generatedFileCount,
+              },
+            )}
           </button>
 
           <button
@@ -87,8 +117,8 @@ export default function WorkspaceNavigation({
             className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
           >
             {generating
-              ? "Generálás..."
-              : "Generálás"}
+              ? t("workspace.generating")
+              : t("workspace.generate")}
           </button>
         </div>
       </div>
@@ -96,7 +126,9 @@ export default function WorkspaceNavigation({
       <SettingsTabs
         activeTab={activeTab}
         relayCount={relayCount}
-        binarySensorCount={binarySensorCount}
+        binarySensorCount={
+          binarySensorCount
+        }
         pwmCount={pwmCount}
         adcCount={adcCount}
         onChange={onTabChange}

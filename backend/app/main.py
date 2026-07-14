@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import get_cors_origins
 from app.schemas import (
     BoardOption,
     ESPHomeGenerateRequest,
@@ -20,10 +21,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=get_cors_origins(),
     allow_origin_regex=(
         r"^http://(?:"
         r"10(?:\.\d{1,3}){3}|"
