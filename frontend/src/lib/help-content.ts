@@ -188,6 +188,42 @@ export const HELP = {
     details:
       "Általános használatra INFO vagy DEBUG ajánlott. A VERBOSE szintek növelhetik a memória- és processzorterhelést.",
   },
+  pwmOutput: {
+    title: "PWM-kimenet",
+    description:
+      "Gyors digitális ki- és bekapcsolással szabályozható kimenetet hoz létre.",
+    details:
+      "Az ESPHome a PWM-kimenetből Home Assistantban szabályozható, egyszínű fény entitást készít. LEDhez, megfelelő meghajtóhoz vagy más PWM-kompatibilis elektronikához használható.",
+  },
+  pwmName: {
+    title: "PWM-kimenet neve",
+    description:
+      "Ezzel a névvel jelenik meg a szabályozható kimenet a Home Assistantban.",
+    details:
+      "Adj egyértelmű nevet, például Műhely LED vagy Ventilátor fordulatszám.",
+  },
+  pwmPin: {
+    title: "PWM GPIO-kimenet",
+    description:
+      "Ezen a GPIO-n állítja elő az ESPHome a PWM-jelet.",
+    details:
+      "Csak PWM-re alkalmas pinek jelennek meg. A GPIO-t más relé, bemenet, státusz-LED vagy ADC-bemenet nem használhatja.",
+    variant: "warning",
+  },
+  pwmFrequency: {
+    title: "PWM-frekvencia",
+    description:
+      "Megadja, hogy a PWM-jel másodpercenként hányszor ismétlődjön.",
+    details:
+      "LEDhez gyakran 1000 Hz megfelelő. Motorvezérlőnél, tápegységnél vagy más elektronikánál mindig a meghajtó dokumentációja szerinti frekvenciát használd.",
+  },
+  pwmInverted: {
+    title: "Fordított PWM-logika",
+    description:
+      "Megfordítja a PWM kitöltési tényezőjének működését.",
+    details:
+      "Bekapcsolva a 0 százalék teljes kimenetet, a 100 százalék pedig kikapcsolt kimenetet jelenthet. Csak invertált meghajtású elektronikánál használd.",
+  },
   statusLed: {
     title: "ESPHome státusz-LED",
     description:

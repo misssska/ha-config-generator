@@ -7,6 +7,7 @@ import DeviceSettings from "@/components/DeviceSettings";
 import NetworkSystemSettings from "@/components/NetworkSystemSettings";
 import SystemFeaturesSettings from "@/components/SystemFeaturesSettings";
 import StatusLedSettings from "@/components/StatusLedSettings";
+import PwmOutputEditor from "@/components/PwmOutputEditor";
 import { useEsphomeForm } from "@/hooks/useEsphomeForm";
 import { useEsphomeBoards } from "@/hooks/useEsphomeBoards";
 import { useEsphomeGeneration } from "@/hooks/useEsphomeGeneration";
@@ -48,6 +49,9 @@ export default function Home() {
     disableStatusLed,
     updateStatusLed,
     pwmOutputs,
+    addPwmOutput,
+    removePwmOutput,
+    updatePwmOutput,
     adcInputs,
     relays,
     binarySensors,
@@ -138,6 +142,14 @@ export default function Home() {
                 onEnable={enableStatusLed}
                 onDisable={disableStatusLed}
                 onUpdate={updateStatusLed}
+              />
+
+              <PwmOutputEditor
+                currentBoard={currentBoard}
+                pwmOutputs={pwmOutputs}
+                onAdd={addPwmOutput}
+                onRemove={removePwmOutput}
+                onUpdate={updatePwmOutput}
               />
 
               <RelayEditor
