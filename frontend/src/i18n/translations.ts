@@ -27,6 +27,12 @@ const hungarianTranslations = {
 
   "workspace.unnamedDevice": "Névtelen eszköz",
   "workspace.loadingBoard": "Alaplap betöltése...",
+  "workspace.connectingServer": "Kapcsolódás a szerverhez...",
+  "workspace.serverWaking": "A szerver ébred...",
+  "workspace.serverWakingDetail":
+    "Az ingyenes szerver tétlenség után leállhat. Automatikusan újrapróbáljuk, nincs teendőd.",
+  "workspace.serverUnavailable": "A szerver nem érhető el.",
+  "workspace.retry": "Újrapróbálás",
   "workspace.outputCount": "{count} kimenet",
   "workspace.inputCount": "{count} bemenet",
   "workspace.results": "Eredmény ({count})",
@@ -61,6 +67,12 @@ const englishTranslations: Record<
 
   "workspace.unnamedDevice": "Unnamed device",
   "workspace.loadingBoard": "Loading board...",
+  "workspace.connectingServer": "Connecting to the server...",
+  "workspace.serverWaking": "The server is waking up...",
+  "workspace.serverWakingDetail":
+    "The free server may stop after inactivity. Connection is retried automatically; no action is needed.",
+  "workspace.serverUnavailable": "The server is unavailable.",
+  "workspace.retry": "Retry",
   "workspace.outputCount": "{count} outputs",
   "workspace.inputCount": "{count} inputs",
   "workspace.results": "Results ({count})",

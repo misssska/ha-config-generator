@@ -5,6 +5,9 @@ import SettingsTabs from "@/components/SettingsTabs";
 import type {
   SettingsTabId,
 } from "@/components/BoardPinout";
+import type {
+  BoardConnectionState,
+} from "@/hooks/useEsphomeBoards";
 import {
   useLanguage,
 } from "@/i18n/LanguageProvider";
@@ -13,6 +16,7 @@ type WorkspaceNavigationProps = {
   activeTab: SettingsTabId;
   deviceName: string;
   boardLabel: string | undefined;
+  boardConnectionState: BoardConnectionState;
   persistenceReady: boolean;
   generating: boolean;
   generationDisabled: boolean;
@@ -26,12 +30,14 @@ type WorkspaceNavigationProps = {
     tabId: SettingsTabId,
   ) => void;
   onOpenResults: () => void;
+  onRetryBoards: () => void;
 };
 
 export default function WorkspaceNavigation({
   activeTab,
   deviceName,
   boardLabel,
+  boardConnectionState,
   persistenceReady,
   generating,
   generationDisabled,
@@ -43,6 +49,7 @@ export default function WorkspaceNavigation({
   adcCount,
   onTabChange,
   onOpenResults,
+  onRetryBoards,
 }: WorkspaceNavigationProps) {
   const { t } = useLanguage();
 
@@ -51,6 +58,15 @@ export default function WorkspaceNavigation({
 
   const inputCount =
     binarySensorCount + adcCount;
+
+  const boardStatus =
+    boardConnectionState === "ready"
+      ? boardLabel ?? t("workspace.loadingBoard")
+      : boardConnectionState === "waking"
+        ? t("workspace.serverWaking")
+        : boardConnectionState === "error"
+          ? t("workspace.serverUnavailable")
+          : t("workspace.connectingServer");
 
   return (
     <section className="sticky top-2 z-30 -mx-4 border-y border-slate-700/80 bg-slate-900/95 px-3 py-3 shadow-xl shadow-slate-950/50 backdrop-blur sm:-mx-6 sm:px-6">
@@ -73,9 +89,11 @@ export default function WorkspaceNavigation({
             </strong>
           </div>
 
-          <p className="mt-1 truncate text-[10px] text-slate-500">
-            {boardLabel ??
-              t("workspace.loadingBoard")}
+          <p
+            className="mt-1 truncate text-[10px] text-slate-500"
+            aria-live="polite"
+          >
+            {boardStatus}
           </p>
         </div>
 
@@ -134,12 +152,45 @@ export default function WorkspaceNavigation({
         onChange={onTabChange}
       />
 
+      {boardConnectionState === "waking" && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mt-3 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-xs text-amber-100"
+        >
+          <span
+            className="mt-0.5 h-3 w-3 shrink-0 animate-pulse rounded-full bg-amber-400"
+            aria-hidden="true"
+          />
+
+          <div>
+            <strong>
+              {t("workspace.serverWaking")}
+            </strong>
+
+            <p className="mt-1 leading-5 text-amber-200/80">
+              {t("workspace.serverWakingDetail")}
+            </p>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div
           role="alert"
-          className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200"
+          className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200"
         >
-          {error}
+          <span>{error}</span>
+
+          {boardConnectionState === "error" && (
+            <button
+              type="button"
+              onClick={onRetryBoards}
+              className="rounded-md border border-red-400/40 bg-red-500/10 px-3 py-1.5 font-semibold transition hover:bg-red-500/20"
+            >
+              {t("workspace.retry")}
+            </button>
+          )}
         </div>
       )}
     </section>

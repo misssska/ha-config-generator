@@ -48,6 +48,8 @@ export default function Home() {
   const {
     boards,
     boardsLoading,
+    boardConnectionState,
+    retryBoards,
   } = useEsphomeBoards({
     onError: setError,
   });
@@ -196,6 +198,9 @@ export default function Home() {
                 activeTab={activeSettingsTab}
                 deviceName={deviceName}
                 boardLabel={currentBoard?.label}
+                boardConnectionState={
+                  boardConnectionState
+                }
                 persistenceReady={persistenceReady}
                 generating={generating}
                 generationDisabled={
@@ -217,6 +222,7 @@ export default function Home() {
                 onOpenResults={() =>
                   setResultsOpen(true)
                 }
+                onRetryBoards={retryBoards}
               />
 
               <div

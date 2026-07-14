@@ -19,6 +19,7 @@ describe("WorkspaceNavigation", () => {
         activeTab="outputs"
         deviceName="muhely-vezerlo"
         boardLabel="ESP32 DevKit"
+        boardConnectionState="ready"
         persistenceReady
         generating={false}
         generationDisabled={false}
@@ -30,6 +31,7 @@ describe("WorkspaceNavigation", () => {
         adcCount={2}
         onTabChange={vi.fn()}
         onOpenResults={vi.fn()}
+        onRetryBoards={vi.fn()}
       />,
     );
 
@@ -58,6 +60,7 @@ describe("WorkspaceNavigation", () => {
         activeTab="device"
         deviceName="teszt"
         boardLabel="ESP32"
+        boardConnectionState="ready"
         persistenceReady
         generating={false}
         generationDisabled={false}
@@ -69,6 +72,7 @@ describe("WorkspaceNavigation", () => {
         adcCount={0}
         onTabChange={vi.fn()}
         onOpenResults={onOpenResults}
+        onRetryBoards={vi.fn()}
       />,
     );
 
@@ -87,6 +91,7 @@ describe("WorkspaceNavigation", () => {
         activeTab="inputs"
         deviceName="teszt"
         boardLabel="ESP32"
+        boardConnectionState="ready"
         persistenceReady
         generating
         generationDisabled
@@ -98,6 +103,7 @@ describe("WorkspaceNavigation", () => {
         adcCount={0}
         onTabChange={vi.fn()}
         onOpenResults={vi.fn()}
+        onRetryBoards={vi.fn()}
       />,
     );
 
@@ -105,4 +111,64 @@ describe("WorkspaceNavigation", () => {
       "GPIO-ütközés található.",
     );
   });
+  it("jelzi, amikor a szerver ebred", () => {
+    render(
+      <WorkspaceNavigation
+        activeTab="device"
+        deviceName="teszt"
+        boardLabel={undefined}
+        boardConnectionState="waking"
+        persistenceReady
+        generating={false}
+        generationDisabled
+        generatedFileCount={0}
+        error=""
+        relayCount={0}
+        binarySensorCount={0}
+        pwmCount={0}
+        adcCount={0}
+        onTabChange={vi.fn()}
+        onOpenResults={vi.fn()}
+        onRetryBoards={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "A szerver \u00e9bred",
+    );
+  });
+
+  it("hiba utan ujrainditja a kapcsolodast", () => {
+    const onRetryBoards = vi.fn();
+
+    render(
+      <WorkspaceNavigation
+        activeTab="device"
+        deviceName="teszt"
+        boardLabel={undefined}
+        boardConnectionState="error"
+        persistenceReady
+        generating={false}
+        generationDisabled
+        generatedFileCount={0}
+        error="Failed to fetch"
+        relayCount={0}
+        binarySensorCount={0}
+        pwmCount={0}
+        adcCount={0}
+        onTabChange={vi.fn()}
+        onOpenResults={vi.fn()}
+        onRetryBoards={onRetryBoards}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "\u00dajrapr\u00f3b\u00e1l\u00e1s",
+      }),
+    );
+
+    expect(onRetryBoards).toHaveBeenCalledOnce();
+  });
+
 });
