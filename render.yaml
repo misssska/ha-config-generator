@@ -1,4 +1,4 @@
-﻿services:
+services:
   - type: web
     name: ha-config-generator-api
     runtime: python
@@ -13,3 +13,5 @@
     envVars:
       - key: PYTHON_VERSION
         value: 3.14.4
+      - key: CORS_ORIGINS
+        value: https://ha-config-generator.vercel.app
