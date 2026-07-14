@@ -73,13 +73,13 @@ def build_service_lines(
     lines = [
         "logger:",
         f"  level: {request.logger_level}",
+        "",
+        "api:",
     ]
 
     if request.api_encryption_enabled:
         lines.extend(
             [
-                "",
-                "api:",
                 "  encryption:",
                 f"    key: !secret {api_secret}",
             ]
