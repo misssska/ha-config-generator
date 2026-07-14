@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import (
@@ -24,6 +24,14 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
+    allow_origin_regex=(
+        r"^http://(?:"
+        r"10(?:\.\d{1,3}){3}|"
+        r"192\.168(?:\.\d{1,3}){2}|"
+        r"172\.(?:1[6-9]|2\d|3[01])"
+        r"(?:\.\d{1,3}){2}"
+        r"):3000$"
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
