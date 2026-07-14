@@ -1,21 +1,36 @@
 "use client";
 
-import ConfigurationManager from "@/components/ConfigurationManager";
-import GeneratedFilesPanel from "@/components/GeneratedFilesPanel";
-import RelayEditor from "@/components/RelayEditor";
-import BinarySensorEditor from "@/components/BinarySensorEditor";
-import DeviceSettings from "@/components/DeviceSettings";
-import NetworkSystemSettings from "@/components/NetworkSystemSettings";
-import SystemFeaturesSettings from "@/components/SystemFeaturesSettings";
-import StatusLedSettings from "@/components/StatusLedSettings";
-import PwmOutputEditor from "@/components/PwmOutputEditor";
+import {
+  useState,
+  type FormEvent,
+} from "react";
+
 import AdcInputEditor from "@/components/AdcInputEditor";
-import { useEsphomeForm } from "@/hooks/useEsphomeForm";
+import BinarySensorEditor from "@/components/BinarySensorEditor";
+import BoardPinout, {
+  type SettingsTabId,
+} from "@/components/BoardPinout";
+import ConfigurationManager from "@/components/ConfigurationManager";
+import DeviceSettings from "@/components/DeviceSettings";
+import GeneratedProjectDrawer from "@/components/GeneratedProjectDrawer";
+import NetworkSystemSettings from "@/components/NetworkSystemSettings";
+import PwmOutputEditor from "@/components/PwmOutputEditor";
+import RelayEditor from "@/components/RelayEditor";
+import StatusLedSettings from "@/components/StatusLedSettings";
+import SystemFeaturesSettings from "@/components/SystemFeaturesSettings";
+import WorkspaceNavigation from "@/components/WorkspaceNavigation";
 import { useEsphomeBoards } from "@/hooks/useEsphomeBoards";
+import { useEsphomeForm } from "@/hooks/useEsphomeForm";
 import { useEsphomeGeneration } from "@/hooks/useEsphomeGeneration";
 import { ESPHOME_API_URL } from "@/lib/esphome-api";
 
 export default function Home() {
+  const [activeSettingsTab, setActiveSettingsTab] =
+    useState<SettingsTabId>("device");
+
+  const [resultsOpen, setResultsOpen] =
+    useState(false);
+
   const {
     generatedFiles,
     generating,
@@ -80,9 +95,7 @@ export default function Home() {
     onClearGeneratedFiles: clearGeneratedFiles,
   });
 
-
-
-  const handleGenerate = createGenerateHandler(
+  const generateProject = createGenerateHandler(
     {
       deviceName,
       friendlyName,
@@ -99,137 +112,255 @@ export default function Home() {
     validateHardware,
   );
 
+  function handleGenerate(
+    event: FormEvent<HTMLFormElement>,
+  ): void {
+    setResultsOpen(true);
+    void generateProject(event);
+  }
+
+  function navigateToConfigurationField(
+    tabId: SettingsTabId,
+    targetId: string,
+  ): void {
+    setActiveSettingsTab(tabId);
+
+    window.setTimeout(() => {
+      const target = document.getElementById(
+        targetId,
+      ) as HTMLElement | null;
+
+      target?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+      target?.focus({
+        preventScroll: true,
+      });
+    }, 0);
+  }
+
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-8">
-          <div className="mb-3 inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-300">
-            HA Config Generator MVP
+    <main className="min-h-screen bg-slate-950 px-3 py-5 text-slate-100 sm:px-5">
+      <div className="mx-auto max-w-[1700px]">
+        <header className="mb-5">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div className="mb-2 inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
+                HA Config Generator
+              </div>
+
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                ESPHome konfigurációgenerátor
+              </h1>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Hardver, GPIO-k és automatizálások
+                egyetlen munkafelületen.
+              </p>
+            </div>
+
+            <span className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-[10px] text-slate-500">
+              Backend: {ESPHOME_API_URL}
+            </span>
           </div>
-
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            ESPHome konfigurációgenerátor
-          </h1>
-
-          <p className="mt-3 max-w-3xl text-slate-400">
-            Alaplapfüggő GPIO-ellenőrzéssel készíthetsz ESPHome
-            konfigurációkat.
-          </p>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[470px_1fr]">
-          <section className="h-fit rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
-            <form className="space-y-7" onSubmit={handleGenerate}>
-              <ConfigurationManager
+        <div className="grid items-start gap-5 lg:grid-cols-[460px_minmax(0,1fr)] xl:grid-cols-[520px_minmax(0,1fr)]">
+          <aside className="lg:sticky lg:top-2">
+            <BoardPinout
+              currentBoard={currentBoard}
+              statusLed={statusLed}
+              pwmOutputs={pwmOutputs}
+              adcInputs={adcInputs}
+              relays={relays}
+              binarySensors={binarySensors}
+              onNavigate={navigateToConfigurationField}
+            />
+          </aside>
+
+          <section className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-xl sm:p-6">
+            <form
+              className="space-y-5"
+              onSubmit={handleGenerate}
+            >
+              <WorkspaceNavigation
+                activeTab={activeSettingsTab}
                 deviceName={deviceName}
-                disabled={
-                  !persistenceReady || boardsLoading
+                boardLabel={currentBoard?.label}
+                persistenceReady={persistenceReady}
+                generating={generating}
+                generationDisabled={
+                  generating ||
+                  boardsLoading ||
+                  !currentBoard
                 }
-                onExport={exportConfiguration}
-                onImport={importConfiguration}
-                onReset={resetConfiguration}
-              />
-
-              <DeviceSettings
-                deviceName={deviceName}
-                friendlyName={friendlyName}
-                board={board}
-                includeFallbackAp={includeFallbackAp}
-                boards={boards}
-                boardsLoading={boardsLoading}
-                currentBoard={currentBoard}
-                onDeviceNameChange={setDeviceName}
-                onFriendlyNameChange={setFriendlyName}
-                onBoardChange={handleBoardChange}
-                onFallbackApChange={setIncludeFallbackAp}
-              />
-
-              <NetworkSystemSettings
-                settings={networkSettings}
-                includeFallbackAp={includeFallbackAp}
-                onChange={updateNetworkSettings}
-              />
-
-              <SystemFeaturesSettings
-                settings={systemFeatures}
-                onChange={updateSystemFeatures}
-              />
-
-              <StatusLedSettings
-                currentBoard={currentBoard}
-                statusLed={statusLed}
-                onEnable={enableStatusLed}
-                onDisable={disableStatusLed}
-                onUpdate={updateStatusLed}
-              />
-
-              <PwmOutputEditor
-                currentBoard={currentBoard}
-                pwmOutputs={pwmOutputs}
-                onAdd={addPwmOutput}
-                onRemove={removePwmOutput}
-                onUpdate={updatePwmOutput}
-              />
-
-              <AdcInputEditor
-                currentBoard={currentBoard}
-                adcInputs={adcInputs}
-                onAdd={addAdcInput}
-                onRemove={removeAdcInput}
-                onUpdate={updateAdcInput}
-              />
-
-              <RelayEditor
-                currentBoard={currentBoard}
-                relays={relays}
-                onAdd={addRelay}
-                onRemove={removeRelay}
-                onUpdate={updateRelay}
-              />
-
-              <BinarySensorEditor
-                currentBoard={currentBoard}
-                binarySensors={binarySensors}
-                onAdd={addBinarySensor}
-                onRemove={removeBinarySensor}
-                onUpdate={updateBinarySensor}
-                onUpdatePin={updateBinarySensorPin}
-              />
-
-              {error && (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={
-                  generating || boardsLoading || !currentBoard
+                generatedFileCount={
+                  generatedFiles.length
                 }
-                className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700"
+                error={error}
+                relayCount={relays.length}
+                binarySensorCount={
+                  binarySensors.length
+                }
+                pwmCount={pwmOutputs.length}
+                adcCount={adcInputs.length}
+                onTabChange={setActiveSettingsTab}
+                onOpenResults={() =>
+                  setResultsOpen(true)
+                }
+              />
+
+              <div
+                role="tabpanel"
+                className="space-y-5 pb-2 [&>section]:rounded-xl [&>section]:border [&>section]:border-slate-800/80 [&>section]:bg-slate-950/50 [&>section]:p-5 [&>section]:pt-5 [&>section]:shadow-sm"
               >
-                {generating
-                  ? "Generálás..."
-                  : "ESPHome projekt generálása"}
-              </button>
+                {activeSettingsTab === "device" && (
+                  <>
+                    <ConfigurationManager
+                      deviceName={deviceName}
+                      disabled={
+                        !persistenceReady ||
+                        boardsLoading
+                      }
+                      onExport={
+                        exportConfiguration
+                      }
+                      onImport={
+                        importConfiguration
+                      }
+                      onReset={
+                        resetConfiguration
+                      }
+                    />
+
+                    <DeviceSettings
+                      deviceName={deviceName}
+                      friendlyName={friendlyName}
+                      board={board}
+                      includeFallbackAp={
+                        includeFallbackAp
+                      }
+                      boards={boards}
+                      boardsLoading={boardsLoading}
+                      currentBoard={currentBoard}
+                      onDeviceNameChange={
+                        setDeviceName
+                      }
+                      onFriendlyNameChange={
+                        setFriendlyName
+                      }
+                      onBoardChange={
+                        handleBoardChange
+                      }
+                      onFallbackApChange={
+                        setIncludeFallbackAp
+                      }
+                    />
+
+                    <NetworkSystemSettings
+                      settings={networkSettings}
+                      includeFallbackAp={
+                        includeFallbackAp
+                      }
+                      onChange={
+                        updateNetworkSettings
+                      }
+                    />
+
+                    <SystemFeaturesSettings
+                      settings={systemFeatures}
+                      onChange={
+                        updateSystemFeatures
+                      }
+                    />
+                  </>
+                )}
+
+                {activeSettingsTab === "outputs" && (
+                  <>
+                    <StatusLedSettings
+                      currentBoard={currentBoard}
+                      statusLed={statusLed}
+                      onEnable={enableStatusLed}
+                      onDisable={disableStatusLed}
+                      onUpdate={updateStatusLed}
+                    />
+
+                    <PwmOutputEditor
+                      currentBoard={currentBoard}
+                      pwmOutputs={pwmOutputs}
+                      onAdd={addPwmOutput}
+                      onRemove={removePwmOutput}
+                      onUpdate={updatePwmOutput}
+                    />
+
+                    <RelayEditor
+                      currentBoard={currentBoard}
+                      relays={relays}
+                      onAdd={addRelay}
+                      onRemove={removeRelay}
+                      onUpdate={updateRelay}
+                    />
+                  </>
+                )}
+
+                {activeSettingsTab === "inputs" && (
+                  <>
+                    <AdcInputEditor
+                      currentBoard={currentBoard}
+                      adcInputs={adcInputs}
+                      onAdd={addAdcInput}
+                      onRemove={removeAdcInput}
+                      onUpdate={updateAdcInput}
+                    />
+
+                    <BinarySensorEditor
+                      currentBoard={currentBoard}
+                      binarySensors={binarySensors}
+                      onAdd={addBinarySensor}
+                      onRemove={
+                        removeBinarySensor
+                      }
+                      onUpdate={
+                        updateBinarySensor
+                      }
+                      onUpdatePin={
+                        updateBinarySensorPin
+                      }
+                    />
+                  </>
+                )}
+
+                {activeSettingsTab ===
+                  "automations" && (
+                  <section className="rounded-xl border border-dashed border-blue-500/40 bg-blue-500/5 p-6">
+                    <h2 className="text-xl font-semibold text-blue-100">
+                      Automatizálások
+                    </h2>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-400">
+                      A következő fejlesztési
+                      csomagban ide kerül a vizuális
+                      trigger–feltétel–művelet
+                      szerkesztő.
+                    </p>
+                  </section>
+                )}
+              </div>
             </form>
-
-            <div className="mt-5 border-t border-slate-800 pt-4 text-xs text-slate-500">
-              Backend: {ESPHOME_API_URL}
-            </div>
           </section>
-
-          <GeneratedFilesPanel
-            generatedFiles={generatedFiles}
-            onCopy={copyFile}
-            onDownload={downloadFile}
-          />
         </div>
       </div>
+
+      <GeneratedProjectDrawer
+        open={resultsOpen}
+        generatedFiles={generatedFiles}
+        onCopy={copyFile}
+        onDownload={downloadFile}
+        onClose={() => setResultsOpen(false)}
+      />
     </main>
   );
 }
-
-
-
