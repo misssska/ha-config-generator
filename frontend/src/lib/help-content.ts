@@ -188,6 +188,43 @@ export const HELP = {
     details:
       "Általános használatra INFO vagy DEBUG ajánlott. A VERBOSE szintek növelhetik a memória- és processzorterhelést.",
   },
+  adcInput: {
+    title: "ADC-bemenet",
+    description:
+      "Az analóg-digitális átalakító egy változó feszültségszintet mér és számszerű értékké alakít.",
+    details:
+      "Potenciométerekhez és megfelelő kimenetű analóg érzékelőkhöz használható. A bemeneti feszültség soha nem haladhatja meg az alaplap megengedett értékét.",
+  },
+  adcName: {
+    title: "ADC-szenzor neve",
+    description:
+      "Ezzel a névvel jelenik meg az analóg mérés a Home Assistantban.",
+    details:
+      "Adj a mért fizikai mennyiségre utaló nevet, például Tartályszint, Nyomás vagy Analóg feszültség.",
+  },
+  adcPin: {
+    title: "ADC GPIO-bemenet",
+    description:
+      "Ezen az analóg mérésre alkalmas bemeneten történik a feszültség mintavételezése.",
+    details:
+      "Csak ADC-képes pinek jelennek meg. ESP8266 esetén ez az A0 bemenet. A GPIO-t más funkció nem használhatja.",
+    variant: "warning",
+  },
+  adcUpdateInterval: {
+    title: "ADC frissítési idő",
+    description:
+      "Meghatározza, milyen gyakran végezzen új mérést és küldjön friss értéket az ESPHome.",
+    details:
+      "Gyorsan változó jelhez kisebb, lassú folyamatokhoz nagyobb érték használható. A túl gyakori frissítés növeli a hálózati és processzorterhelést.",
+  },
+  adcAttenuation: {
+    title: "ESP32 ADC-csillapítás",
+    description:
+      "Az ESP32 analóg bemenetének mérési tartományát módosítja.",
+    details:
+      "Általános használatra az Automatikus beállítás ajánlott. A kézi értéket csak az adott ESP32 és a mérendő jel villamos jellemzőinek ismeretében állítsd be.",
+    variant: "warning",
+  },
   pwmOutput: {
     title: "PWM-kimenet",
     description:

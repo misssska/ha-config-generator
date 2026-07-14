@@ -8,6 +8,7 @@ import NetworkSystemSettings from "@/components/NetworkSystemSettings";
 import SystemFeaturesSettings from "@/components/SystemFeaturesSettings";
 import StatusLedSettings from "@/components/StatusLedSettings";
 import PwmOutputEditor from "@/components/PwmOutputEditor";
+import AdcInputEditor from "@/components/AdcInputEditor";
 import { useEsphomeForm } from "@/hooks/useEsphomeForm";
 import { useEsphomeBoards } from "@/hooks/useEsphomeBoards";
 import { useEsphomeGeneration } from "@/hooks/useEsphomeGeneration";
@@ -53,6 +54,9 @@ export default function Home() {
     removePwmOutput,
     updatePwmOutput,
     adcInputs,
+    addAdcInput,
+    removeAdcInput,
+    updateAdcInput,
     relays,
     binarySensors,
     currentBoard,
@@ -150,6 +154,14 @@ export default function Home() {
                 onAdd={addPwmOutput}
                 onRemove={removePwmOutput}
                 onUpdate={updatePwmOutput}
+              />
+
+              <AdcInputEditor
+                currentBoard={currentBoard}
+                adcInputs={adcInputs}
+                onAdd={addAdcInput}
+                onRemove={removeAdcInput}
+                onUpdate={updateAdcInput}
               />
 
               <RelayEditor
