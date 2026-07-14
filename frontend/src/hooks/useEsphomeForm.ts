@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   AdcInputConfig,
   BinarySensorConfig,
   BoardOption,
+  EsphomeFormSnapshot,
   GPIOPinOption,
   NetworkSettingsConfig,
   PwmOutputConfig,
@@ -13,6 +14,15 @@ import type {
   StatusLedConfig,
   SystemFeaturesConfig,
 } from "@/types/esphome";
+
+import {
+  createDefaultEsphomeFormSnapshot,
+  loadConfigurationFromStorage,
+  parseConfiguration,
+  removeConfigurationFromStorage,
+  saveConfigurationToStorage,
+  serializeConfiguration,
+} from "@/lib/config-persistence";
 
 type UseEsphomeFormOptions = {
   boards: BoardOption[];
@@ -25,78 +35,277 @@ export function useEsphomeForm({
   onError,
   onClearGeneratedFiles,
 }: UseEsphomeFormOptions) {
-  const [deviceName, setDeviceName] = useState("muhely-vezerlo");
-  const [friendlyName, setFriendlyName] =
-    useState("Műhely vezérlő");
-  const [board, setBoard] = useState("esp32dev");
+  const [defaults] = useState(
+    createDefaultEsphomeFormSnapshot,
+  );
+
+  const [deviceName, setDeviceName] = useState(
+    defaults.deviceName,
+  );
+
+  const [friendlyName, setFriendlyName] = useState(
+    defaults.friendlyName,
+  );
+
+  const [board, setBoard] = useState(defaults.board);
+
   const [includeFallbackAp, setIncludeFallbackAp] =
-    useState(true);
+    useState(defaults.includeFallbackAp);
 
   const [networkSettings, setNetworkSettings] =
-    useState<NetworkSettingsConfig>({
-      wifiUseSecrets: true,
-      wifiSsid: "WIFI_NEVE",
-      wifiPassword: "WIFI_JELSZO",
-      useStaticIp: false,
-      staticIp: "",
-      gateway: "",
-      subnet: "255.255.255.0",
-      dns1: "",
-      dns2: "",
-      fallbackApSsid: "",
-      fallbackApPassword: "",
-      apiEncryptionEnabled: true,
-      otaEnabled: true,
-      loggerLevel: "DEBUG",
-    });
+    useState<NetworkSettingsConfig>(
+      defaults.networkSettings,
+    );
 
   const [systemFeatures, setSystemFeatures] =
-    useState<SystemFeaturesConfig>({
-      includeUptimeSensor: true,
-      includeWifiSignalSensor: true,
-      includeRestartButton: true,
-    });
+    useState<SystemFeaturesConfig>(
+      defaults.systemFeatures,
+    );
 
   const [statusLed, setStatusLed] =
-    useState<StatusLedConfig | null>(null);
+    useState<StatusLedConfig | null>(
+      defaults.statusLed,
+    );
 
   const [pwmOutputs, setPwmOutputs] = useState<
     PwmOutputConfig[]
-  >([]);
+  >(defaults.pwmOutputs);
 
   const [adcInputs, setAdcInputs] = useState<
     AdcInputConfig[]
-  >([]);
+  >(defaults.adcInputs);
 
-  const [relays, setRelays] = useState<RelayConfig[]>([
-    {
-      clientId: 1,
-      name: "Műhely világítás",
-      pin: 23,
-      inverted: true,
-      restoreMode: "ALWAYS_OFF",
-    },
-  ]);
+  const [relays, setRelays] = useState<RelayConfig[]>(
+    defaults.relays,
+  );
 
   const [binarySensors, setBinarySensors] = useState<
     BinarySensorConfig[]
-  >([
-    {
-      clientId: 1,
-      name: "Műhelyajtó",
-      pin: 22,
-      inverted: true,
-      pullMode: "PULLUP",
-      deviceClass: "door",
-      delayedOnMs: 20,
-      delayedOffMs: 20,
-    },
-  ]);
+  >(defaults.binarySensors);
 
   const nextRelayId = useRef(2);
   const nextBinarySensorId = useRef(2);
   const nextPwmOutputId = useRef(1);
   const nextAdcInputId = useRef(1);
+
+  const [persistenceReady, setPersistenceReady] =
+    useState(false);
+
+
+  function createSnapshot(): EsphomeFormSnapshot {
+    return {
+      deviceName,
+      friendlyName,
+      board,
+      includeFallbackAp,
+      networkSettings: {
+        ...networkSettings,
+      },
+      systemFeatures: {
+        ...systemFeatures,
+      },
+      statusLed: statusLed
+        ? {
+            ...statusLed,
+          }
+        : null,
+      pwmOutputs: pwmOutputs.map((output) => ({
+        ...output,
+      })),
+      adcInputs: adcInputs.map((input) => ({
+        ...input,
+      })),
+      relays: relays.map((relay) => ({
+        ...relay,
+      })),
+      binarySensors: binarySensors.map((sensor) => ({
+        ...sensor,
+      })),
+    };
+  }
+
+  function updateNextClientIds(
+    snapshot: EsphomeFormSnapshot,
+  ): void {
+    nextRelayId.current =
+      Math.max(
+        0,
+        ...snapshot.relays.map((relay) => relay.clientId),
+      ) + 1;
+
+    nextBinarySensorId.current =
+      Math.max(
+        0,
+        ...snapshot.binarySensors.map(
+          (sensor) => sensor.clientId,
+        ),
+      ) + 1;
+
+    nextPwmOutputId.current =
+      Math.max(
+        0,
+        ...snapshot.pwmOutputs.map(
+          (output) => output.clientId,
+        ),
+      ) + 1;
+
+    nextAdcInputId.current =
+      Math.max(
+        0,
+        ...snapshot.adcInputs.map(
+          (input) => input.clientId,
+        ),
+      ) + 1;
+  }
+
+  function applySnapshot(
+    snapshot: EsphomeFormSnapshot,
+  ): void {
+    setDeviceName(snapshot.deviceName);
+    setFriendlyName(snapshot.friendlyName);
+    setBoard(snapshot.board);
+    setIncludeFallbackAp(snapshot.includeFallbackAp);
+
+    setNetworkSettings({
+      ...snapshot.networkSettings,
+    });
+
+    setSystemFeatures({
+      ...snapshot.systemFeatures,
+    });
+
+    setStatusLed(
+      snapshot.statusLed
+        ? {
+            ...snapshot.statusLed,
+          }
+        : null,
+    );
+
+    setPwmOutputs(
+      snapshot.pwmOutputs.map((output) => ({
+        ...output,
+      })),
+    );
+
+    setAdcInputs(
+      snapshot.adcInputs.map((input) => ({
+        ...input,
+      })),
+    );
+
+    setRelays(
+      snapshot.relays.map((relay) => ({
+        ...relay,
+      })),
+    );
+
+    setBinarySensors(
+      snapshot.binarySensors.map((sensor) => ({
+        ...sensor,
+      })),
+    );
+
+    updateNextClientIds(snapshot);
+    onError("");
+    onClearGeneratedFiles();
+  }
+
+  /*
+   * A localStorage csak a böngészőben érhető el, ezért
+   * a mentett állapotot a kliensoldali indulás után töltjük be.
+   */
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (persistenceReady || boards.length === 0) {
+      return;
+    }
+
+    try {
+      const savedConfiguration =
+        loadConfigurationFromStorage(boards);
+
+      if (savedConfiguration) {
+        applySnapshot(savedConfiguration);
+      }
+    } catch (caughtError) {
+      removeConfigurationFromStorage();
+
+      onError(
+        caughtError instanceof Error
+          ? `A mentett konfiguráció nem tölthető be: ${caughtError.message}`
+          : "A mentett konfiguráció nem tölthető be.",
+      );
+    }
+
+    setPersistenceReady(true);
+
+    // A betöltés szándékosan csak egyszer történik meg.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boards, persistenceReady]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    if (!persistenceReady) {
+      return;
+    }
+
+    try {
+      saveConfigurationToStorage({
+        deviceName,
+        friendlyName,
+        board,
+        includeFallbackAp,
+        networkSettings,
+        systemFeatures,
+        statusLed,
+        pwmOutputs,
+        adcInputs,
+        relays,
+        binarySensors,
+      });
+    } catch {
+      onError(
+        "A konfiguráció automatikus böngészős mentése sikertelen.",
+      );
+    }
+  }, [
+    persistenceReady,
+    deviceName,
+    friendlyName,
+    board,
+    includeFallbackAp,
+    networkSettings,
+    systemFeatures,
+    statusLed,
+    pwmOutputs,
+    adcInputs,
+    relays,
+    binarySensors,
+    onError,
+  ]);
+
+  function exportConfiguration(): string {
+    return serializeConfiguration(createSnapshot());
+  }
+
+  function importConfiguration(content: string): void {
+    const snapshot = parseConfiguration(
+      content,
+      boards,
+    );
+
+    applySnapshot(snapshot);
+    saveConfigurationToStorage(snapshot);
+  }
+
+  function resetConfiguration(): void {
+    const snapshot =
+      createDefaultEsphomeFormSnapshot();
+
+    removeConfigurationFromStorage();
+    applySnapshot(snapshot);
+  }
 
   const resolvedBoard =
     boards.some(
@@ -922,5 +1131,9 @@ export function useEsphomeForm({
     updateBinarySensor,
     updateBinarySensorPin,
     validateHardware,
+    persistenceReady,
+    exportConfiguration,
+    importConfiguration,
+    resetConfiguration,
   };
 }

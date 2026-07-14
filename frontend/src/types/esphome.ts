@@ -130,3 +130,18 @@ export type SystemFeaturesConfig = {
   includeWifiSignalSensor: boolean;
   includeRestartButton: boolean;
 };
+
+
+export type EsphomeFormSnapshot = {
+  deviceName: string;
+  friendlyName: string;
+  board: string;
+  includeFallbackAp: boolean;
+  networkSettings: NetworkSettingsConfig;
+  systemFeatures: SystemFeaturesConfig;
+  statusLed: StatusLedConfig | null;
+  pwmOutputs: PwmOutputConfig[];
+  adcInputs: AdcInputConfig[];
+  relays: RelayConfig[];
+  binarySensors: BinarySensorConfig[];
+};

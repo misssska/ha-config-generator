@@ -1,5 +1,6 @@
 "use client";
 
+import ConfigurationManager from "@/components/ConfigurationManager";
 import GeneratedFilesPanel from "@/components/GeneratedFilesPanel";
 import RelayEditor from "@/components/RelayEditor";
 import BinarySensorEditor from "@/components/BinarySensorEditor";
@@ -69,6 +70,10 @@ export default function Home() {
     updateBinarySensor,
     updateBinarySensorPin,
     validateHardware,
+    persistenceReady,
+    exportConfiguration,
+    importConfiguration,
+    resetConfiguration,
   } = useEsphomeForm({
     boards,
     onError: setError,
@@ -115,6 +120,16 @@ export default function Home() {
         <div className="grid gap-6 lg:grid-cols-[470px_1fr]">
           <section className="h-fit rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
             <form className="space-y-7" onSubmit={handleGenerate}>
+              <ConfigurationManager
+                deviceName={deviceName}
+                disabled={
+                  !persistenceReady || boardsLoading
+                }
+                onExport={exportConfiguration}
+                onImport={importConfiguration}
+                onReset={resetConfiguration}
+              />
+
               <DeviceSettings
                 deviceName={deviceName}
                 friendlyName={friendlyName}

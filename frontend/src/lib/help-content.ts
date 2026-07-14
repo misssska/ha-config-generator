@@ -297,6 +297,13 @@ export const HELP = {
     details:
       "A nullához közelebbi érték jobb kapcsolatot jelent. Körülbelül -50 dBm erős, míg -70 dBm már gyengébb kapcsolat.",
   },
+  configurationManagement: {
+    title: "Konfiguráció mentése",
+    description:
+      "A beállításokat a böngésző automatikusan megőrzi, illetve JSON-fájlba exportálhatod és később visszatöltheted.",
+    details:
+      "A jelszavakat biztonsági okból sem a böngészős mentés, sem az exportált fájl nem tartalmazza. Import után ezeket újra meg kell adni.",
+  },
   restartButton: {
     title: "Távoli újraindítás",
     description:
