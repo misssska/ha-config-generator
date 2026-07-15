@@ -1,7 +1,13 @@
 from ipaddress import IPv4Address
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from app.board_profiles import get_pin_profile
 
@@ -409,6 +415,60 @@ class ESPHomeGenerateRequest(BaseModel):
             )
 
         return self
+
+
+FeedbackCategory = Literal[
+    "bug",
+    "idea",
+    "other",
+]
+
+
+class FeedbackCreateRequest(BaseModel):
+    category: FeedbackCategory
+    message: str = Field(
+        min_length=10,
+        max_length=4000,
+    )
+    email: EmailStr | None = None
+    website: str = Field(
+        default="",
+        max_length=200,
+    )
+
+    @field_validator(
+        "message",
+        "website",
+        mode="before",
+    )
+    @classmethod
+    def strip_text_fields(
+        cls,
+        value: object,
+    ) -> object:
+        if isinstance(value, str):
+            return value.strip()
+
+        return value
+
+    @field_validator(
+        "email",
+        mode="before",
+    )
+    @classmethod
+    def normalize_email(
+        cls,
+        value: object,
+    ) -> object:
+        if isinstance(value, str):
+            normalized = value.strip()
+            return normalized or None
+
+        return value
+
+
+class FeedbackCreateResponse(BaseModel):
+    accepted: bool = True
 
 
 class GenerationStatsResponse(BaseModel):

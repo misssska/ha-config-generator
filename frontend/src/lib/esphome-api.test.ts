@@ -9,11 +9,55 @@ import {
 import {
   fetchGenerationStats,
   generateEsphomeProject,
+  submitFeedback,
 } from "@/lib/esphome-api";
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+describe("submitFeedback", () => {
+  it("sends only the feedback form fields", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        accepted: true,
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await submitFeedback({
+      category: "idea",
+      message: "  Please add another board.  ",
+      email: " user@example.com ",
+    });
+
+    expect(result).toEqual({
+      accepted: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const [url, requestInit] =
+      fetchMock.mock.calls[0] as [
+        string,
+        RequestInit,
+      ];
+
+    expect(url).toContain("/api/feedback");
+    expect(requestInit.method).toBe("POST");
+
+    expect(
+      JSON.parse(String(requestInit.body)),
+    ).toEqual({
+      category: "idea",
+      message: "Please add another board.",
+      email: "user@example.com",
+      website: "",
+    });
+  });
 });
 
 describe("fetchGenerationStats", () => {

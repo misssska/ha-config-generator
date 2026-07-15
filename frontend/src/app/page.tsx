@@ -12,6 +12,7 @@ import BoardPinout, {
 } from "@/components/BoardPinout";
 import ConfigurationManager from "@/components/ConfigurationManager";
 import DeviceSettings from "@/components/DeviceSettings";
+import FeedbackDrawer from "@/components/FeedbackDrawer";
 import GeneratedProjectDrawer from "@/components/GeneratedProjectDrawer";
 import GenerationCounter from "@/components/GenerationCounter";
 import LanguageSelector from "@/components/LanguageSelector";
@@ -33,6 +34,9 @@ export default function Home() {
     useState<SettingsTabId>("device");
 
   const [resultsOpen, setResultsOpen] =
+    useState(false);
+
+  const [feedbackOpen, setFeedbackOpen] =
     useState(false);
 
   const {
@@ -178,6 +182,16 @@ export default function Home() {
                   "app.generationCountUnavailable",
                 )}
               />
+
+              <button
+                type="button"
+                onClick={() =>
+                  setFeedbackOpen(true)
+                }
+                className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-200 transition hover:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+              >
+                {t("feedback.open")}
+              </button>
 
               <LanguageSelector />
 
@@ -378,6 +392,13 @@ export default function Home() {
           </section>
         </div>
       </div>
+
+      <FeedbackDrawer
+        open={feedbackOpen}
+        onClose={() =>
+          setFeedbackOpen(false)
+        }
+      />
 
       <GeneratedProjectDrawer
         open={resultsOpen}

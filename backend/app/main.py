@@ -7,11 +7,14 @@ from app.config import get_cors_origins
 from app.database import (
     get_successful_generations,
     increment_successful_generations,
+    save_feedback_message,
 )
 from app.schemas import (
     BoardOption,
     ESPHomeGenerateRequest,
     ESPHomeGenerateResponse,
+    FeedbackCreateRequest,
+    FeedbackCreateResponse,
     GenerationStatsResponse,
 )
 from app.services.esphome_generator import (
@@ -57,6 +60,45 @@ def health() -> dict[str, str]:
 )
 def list_esphome_boards() -> list[BoardOption]:
     return get_board_options()
+
+
+@app.post(
+    "/api/feedback",
+    response_model=FeedbackCreateResponse,
+    status_code=201,
+)
+def submit_feedback(
+    request: FeedbackCreateRequest,
+) -> FeedbackCreateResponse:
+    if request.website:
+        return FeedbackCreateResponse()
+
+    email = (
+        str(request.email)
+        if request.email is not None
+        else None
+    )
+
+    try:
+        save_feedback_message(
+            category=request.category,
+            message=request.message,
+            email=email,
+        )
+    except Exception as error:
+        logger.exception(
+            "Failed to store feedback."
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Feedback submission is temporarily "
+                "unavailable."
+            ),
+        ) from error
+
+    return FeedbackCreateResponse()
 
 
 @app.get(

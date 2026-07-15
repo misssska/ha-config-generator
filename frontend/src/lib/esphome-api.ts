@@ -2,6 +2,8 @@ import type {
   AdcInputConfig,
   BinarySensorConfig,
   BoardOption,
+  FeedbackCreateInput,
+  FeedbackCreateResponse,
   GenerateResponse,
   GenerationStats,
   NetworkSettingsConfig,
@@ -80,6 +82,42 @@ export async function fetchBoards(
   }
 
   return (await response.json()) as BoardOption[];
+}
+
+export async function submitFeedback({
+  category,
+  message,
+  email = "",
+  website = "",
+}: FeedbackCreateInput): Promise<FeedbackCreateResponse> {
+  const response = await fetch(
+    `${ESPHOME_API_URL}/api/feedback`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        category,
+        message: message.trim(),
+        email: email.trim() || null,
+        website: website.trim(),
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(
+        response,
+        "A visszajelz\u00e9s elk\u00fcld\u00e9se sikertelen",
+      ),
+    );
+  }
+
+  return (
+    await response.json()
+  ) as FeedbackCreateResponse;
 }
 
 export async function fetchGenerationStats(

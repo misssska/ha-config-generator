@@ -30,6 +30,22 @@ export type GenerationStats = {
   successful_generations: number;
 };
 
+export type FeedbackCategory =
+  | "bug"
+  | "idea"
+  | "other";
+
+export type FeedbackCreateInput = {
+  category: FeedbackCategory;
+  message: string;
+  email?: string;
+  website?: string;
+};
+
+export type FeedbackCreateResponse = {
+  accepted: boolean;
+};
+
 export type RestoreMode =
   | "ALWAYS_OFF"
   | "ALWAYS_ON"
