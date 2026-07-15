@@ -24,8 +24,28 @@ function getAllowedDevOrigins(): string[] {
   }
 }
 
+const PRODUCTION_BACKEND_API_URL =
+  "https://ha-config-generator-api.onrender.com";
+const DEVELOPMENT_BACKEND_API_URL =
+  "http://127.0.0.1:8000";
+
+function getBackendApiUrl(): string {
+  return process.env.NODE_ENV === "production"
+    ? PRODUCTION_BACKEND_API_URL
+    : DEVELOPMENT_BACKEND_API_URL;
+}
+
 const nextConfig: NextConfig = {
   allowedDevOrigins: getAllowedDevOrigins(),
+
+  async rewrites() {
+    return [
+      {
+        source: "/backend-api/:path*",
+        destination: `${getBackendApiUrl()}/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
