@@ -5,6 +5,7 @@ import {
   Geist_Mono,
 } from "next/font/google";
 
+import SiteFooter from "@/components/SiteFooter";
 import SoftwareApplicationJsonLd from "@/components/SoftwareApplicationJsonLd";
 import {
   LanguageProvider,
@@ -83,6 +84,7 @@ export default function RootLayout({
 
         <LanguageProvider>
           {children}
+          <SiteFooter />
         </LanguageProvider>
       </body>
     </html>

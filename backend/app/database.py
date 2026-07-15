@@ -48,6 +48,18 @@ CREATE TABLE IF NOT EXISTS feedback_messages (
 )
 """
 
+_CREATE_FEEDBACK_DATE_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS
+    feedback_messages_created_at_idx
+ON feedback_messages (created_at)
+"""
+
+_DELETE_EXPIRED_FEEDBACK_SQL = """
+DELETE FROM feedback_messages
+WHERE created_at <
+    CURRENT_TIMESTAMP - INTERVAL '12 months'
+"""
+
 
 def get_database_url() -> str:
     database_url = os.getenv("DATABASE_URL", "").strip()
@@ -74,8 +86,25 @@ def _ensure_generation_stats(
     connection.execute(_SEED_ROW_SQL)
 
 
+def _delete_expired_feedback_messages(
+    connection: psycopg.Connection,
+) -> None:
+    connection.execute(
+        _CREATE_FEEDBACK_TABLE_SQL
+    )
+    connection.execute(
+        _CREATE_FEEDBACK_DATE_INDEX_SQL
+    )
+    connection.execute(
+        _DELETE_EXPIRED_FEEDBACK_SQL
+    )
+
+
 def get_successful_generations() -> int:
     with _connect() as connection:
+        _delete_expired_feedback_messages(
+            connection
+        )
         _ensure_generation_stats(connection)
 
         row = connection.execute(
@@ -96,6 +125,9 @@ def get_successful_generations() -> int:
 
 def increment_successful_generations() -> int:
     with _connect() as connection:
+        _delete_expired_feedback_messages(
+            connection
+        )
         _ensure_generation_stats(connection)
 
         row = connection.execute(
@@ -124,8 +156,8 @@ def increment_successful_generations() -> int:
 
 def initialize_feedback_storage() -> None:
     with _connect() as connection:
-        connection.execute(
-            _CREATE_FEEDBACK_TABLE_SQL
+        _delete_expired_feedback_messages(
+            connection
         )
 
 
@@ -136,8 +168,8 @@ def save_feedback_message(
     email: str | None,
 ) -> int:
     with _connect() as connection:
-        connection.execute(
-            _CREATE_FEEDBACK_TABLE_SQL
+        _delete_expired_feedback_messages(
+            connection
         )
 
         row = connection.execute(

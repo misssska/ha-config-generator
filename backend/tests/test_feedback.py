@@ -1,9 +1,10 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from fastapi import HTTPException
 from pydantic import ValidationError
 
+from app.database import save_feedback_message
 from app.main import submit_feedback
 from app.schemas import FeedbackCreateRequest
 
@@ -90,6 +91,87 @@ class FeedbackTests(unittest.TestCase):
                 category="bug",
                 message="             ",
             )
+
+    def test_expired_feedback_is_deleted_before_insert(
+        self,
+    ) -> None:
+        connection = MagicMock()
+        insert_result = MagicMock()
+        insert_result.fetchone.return_value = (42,)
+
+        def execute(
+            sql: str,
+            parameters: object = None,
+        ) -> MagicMock:
+            del parameters
+
+            normalized_sql = " ".join(
+                sql.split()
+            )
+
+            if normalized_sql.startswith(
+                "INSERT INTO feedback_messages"
+            ):
+                return insert_result
+
+            return MagicMock()
+
+        connection.execute.side_effect = execute
+
+        context_manager = MagicMock()
+        context_manager.__enter__.return_value = (
+            connection
+        )
+        context_manager.__exit__.return_value = False
+
+        with patch(
+            "app.database._connect",
+            return_value=context_manager,
+        ):
+            identifier = save_feedback_message(
+                category="idea",
+                message="Please add another board.",
+                email=None,
+            )
+
+        self.assertEqual(identifier, 42)
+
+        executed_sql = [
+            " ".join(call.args[0].split())
+            for call in (
+                connection.execute.call_args_list
+            )
+        ]
+
+        delete_index = next(
+            index
+            for index, sql in enumerate(
+                executed_sql
+            )
+            if sql.startswith(
+                "DELETE FROM feedback_messages"
+            )
+        )
+
+        insert_index = next(
+            index
+            for index, sql in enumerate(
+                executed_sql
+            )
+            if sql.startswith(
+                "INSERT INTO feedback_messages"
+            )
+        )
+
+        self.assertLess(
+            delete_index,
+            insert_index,
+        )
+
+        self.assertIn(
+            "INTERVAL '12 months'",
+            executed_sql[delete_index],
+        )
 
 
 if __name__ == "__main__":

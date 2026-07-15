@@ -32,11 +32,18 @@ const hungarianTranslations = {
   "feedback.email": "E-mail-c\u00edm",
   "feedback.emailHint": "Nem k\u00f6telez\u0151. Csak akkor add meg, ha v\u00e1laszt szeretn\u00e9l.",
   "feedback.privacy": "Ne k\u00fcldj Wi-Fi-jelsz\u00f3t, API-kulcsot, teljes secrets.yaml f\u00e1jlt vagy m\u00e1s bizalmas adatot. A rendszer a konfigur\u00e1ci\u00f3dat nem csatolja automatikusan.",
+  "feedback.privacyLink": "Adatkezel\u00e9si t\u00e1j\u00e9koztat\u00f3",
   "feedback.submit": "Visszajelz\u00e9s elk\u00fcld\u00e9se",
   "feedback.submitting": "K\u00fcld\u00e9s...",
   "feedback.success": "K\u00f6sz\u00f6nj\u00fck, a visszajelz\u00e9sed meg\u00e9rkezett.",
   "feedback.error": "A visszajelz\u00e9s most nem k\u00fcldhet\u0151 el. Pr\u00f3b\u00e1ld meg k\u00e9s\u0151bb.",
   "feedback.validation.message": "A visszajelz\u00e9s legyen legal\u00e1bb 10 karakter.",
+
+  "footer.navigation": "Oldalnavig\u00e1ci\u00f3",
+  "footer.home": "Konfigur\u00e1tor",
+  "footer.privacy": "Adatkezel\u00e9s",
+  "footer.contact": "Kapcsolat",
+  "footer.note": "F\u00fcggetlen, k\u00f6z\u00f6ss\u00e9gi ESPHome-konfigur\u00e1ci\u00f3gener\u00e1tor.",
 
   "app.title": "ESPHome konfigurációgenerátor",
   "app.subtitle":
@@ -96,11 +103,18 @@ const englishTranslations: Record<
   "feedback.email": "Email address",
   "feedback.emailHint": "Optional. Add it only if you would like a reply.",
   "feedback.privacy": "Do not send Wi-Fi passwords, API keys, complete secrets.yaml files, or other confidential information. Your configuration is not attached automatically.",
+  "feedback.privacyLink": "Privacy notice",
   "feedback.submit": "Send feedback",
   "feedback.submitting": "Sending...",
   "feedback.success": "Thank you. Your feedback has been received.",
   "feedback.error": "Feedback cannot be sent right now. Please try again later.",
   "feedback.validation.message": "Feedback must contain at least 10 characters.",
+
+  "footer.navigation": "Site navigation",
+  "footer.home": "Configurator",
+  "footer.privacy": "Privacy",
+  "footer.contact": "Contact",
+  "footer.note": "Independent community ESPHome configuration generator.",
 
   "app.title": "ESPHome configuration generator",
   "app.subtitle":

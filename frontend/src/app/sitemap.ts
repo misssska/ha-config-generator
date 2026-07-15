@@ -13,5 +13,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 1,
     },
+    {
+      url: `${SITE_URL}/kapcsolat`,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${SITE_URL}/adatkezeles`,
+      changeFrequency: "monthly",
+      priority: 0.4,
+    },
   ];
 }

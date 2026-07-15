@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -314,7 +315,13 @@ export default function FeedbackDrawer({
               id="feedback-privacy"
               className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs leading-5 text-amber-100/80"
             >
-              {t("feedback.privacy")}
+              {t("feedback.privacy")}{" "}
+              <Link
+                href="/adatkezeles"
+                className="font-semibold text-amber-200 underline decoration-amber-400/40 underline-offset-4 hover:text-amber-100"
+              >
+                {t("feedback.privacyLink")}
+              </Link>
             </p>
 
             {submitted && (
