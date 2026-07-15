@@ -112,7 +112,11 @@ describe("legal and contact pages", () => {
     );
 
     const supportMarkup = renderToStaticMarkup(
-      <SiteFooter supportUrl="https://ko-fi.com/example" />,
+      <SiteFooter supportHandle="example" />,
+    );
+
+    const invalidSupportMarkup = renderToStaticMarkup(
+      <SiteFooter supportHandle="bad/value" />,
     );
 
     expect(markup).toContain(
@@ -136,6 +140,9 @@ describe("legal and contact pages", () => {
     );
     expect(supportMarkup).toContain(
       'rel="noopener noreferrer"',
+    );
+    expect(invalidSupportMarkup).not.toContain(
+      "ko-fi.com/",
     );
   });
 });

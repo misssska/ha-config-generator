@@ -6,14 +6,22 @@ import {
   useLanguage,
 } from "@/i18n/LanguageProvider";
 
+const SUPPORT_HANDLE_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
 type SiteFooterProps = {
-  supportUrl?: string;
+  supportHandle?: string;
 };
 
 export default function SiteFooter({
-  supportUrl = process.env.NEXT_PUBLIC_SUPPORT_URL?.trim(),
+  supportHandle = process.env.NEXT_PUBLIC_KOFI_HANDLE?.trim(),
 }: SiteFooterProps = {}) {
   const { t } = useLanguage();
+
+  const supportUrl =
+    supportHandle &&
+    SUPPORT_HANDLE_PATTERN.test(supportHandle)
+      ? `https://ko-fi.com/${encodeURIComponent(supportHandle)}`
+      : undefined;
 
   return (
     <footer className="border-t border-slate-800 bg-slate-950 px-4 py-6 text-slate-400 sm:px-6">
