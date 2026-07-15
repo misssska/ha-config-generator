@@ -8,6 +8,12 @@ import {
 import {
   LanguageProvider,
 } from "@/i18n/LanguageProvider";
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TITLE,
+  SITE_URL,
+} from "@/lib/site-config";
 
 import "./globals.css";
 
@@ -22,9 +28,38 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HA Config Generator",
-  description:
-    "Home Assistant és ESPHome konfigurációgenerátor.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_TITLE,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    "ESPHome",
+    "Home Assistant",
+    "ESP32",
+    "ESP8266",
+    "YAML",
+    "GPIO",
+    "konfigurációgenerátor",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "hu_HU",
+    url: "/",
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({
