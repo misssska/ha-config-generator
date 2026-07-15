@@ -3,6 +3,7 @@ import type {
   BinarySensorConfig,
   BoardOption,
   GenerateResponse,
+  GenerationStats,
   NetworkSettingsConfig,
   PwmOutputConfig,
   RelayConfig,
@@ -79,6 +80,28 @@ export async function fetchBoards(
   }
 
   return (await response.json()) as BoardOption[];
+}
+
+export async function fetchGenerationStats(
+  signal?: AbortSignal,
+): Promise<GenerationStats> {
+  const response = await fetch(
+    `${ESPHOME_API_URL}/api/stats`,
+    {
+      signal,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(
+        response,
+        "A statisztika lek\u00e9r\u00e9se sikertelen",
+      ),
+    );
+  }
+
+  return (await response.json()) as GenerationStats;
 }
 
 export async function generateEsphomeProject({

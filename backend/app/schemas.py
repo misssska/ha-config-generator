@@ -411,6 +411,10 @@ class ESPHomeGenerateRequest(BaseModel):
         return self
 
 
+class GenerationStatsResponse(BaseModel):
+    successful_generations: int = Field(ge=0)
+
+
 class GeneratedFile(BaseModel):
     filename: str
     content: str

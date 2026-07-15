@@ -13,6 +13,7 @@ import BoardPinout, {
 import ConfigurationManager from "@/components/ConfigurationManager";
 import DeviceSettings from "@/components/DeviceSettings";
 import GeneratedProjectDrawer from "@/components/GeneratedProjectDrawer";
+import GenerationCounter from "@/components/GenerationCounter";
 import LanguageSelector from "@/components/LanguageSelector";
 import NetworkSystemSettings from "@/components/NetworkSystemSettings";
 import PwmOutputEditor from "@/components/PwmOutputEditor";
@@ -36,6 +37,7 @@ export default function Home() {
 
   const {
     generatedFiles,
+    generationSequence,
     generating,
     error,
     setError,
@@ -166,6 +168,17 @@ export default function Home() {
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2">
+              <GenerationCounter
+                refreshToken={generationSequence}
+                label={t("app.generationCount")}
+                loadingLabel={t(
+                  "app.generationCountLoading",
+                )}
+                unavailableLabel={t(
+                  "app.generationCountUnavailable",
+                )}
+              />
+
               <LanguageSelector />
 
               <span className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-[10px] text-slate-500">

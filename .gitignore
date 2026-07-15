@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 backend/.venv/
 __pycache__/
 *.py[cod]
@@ -26,3 +26,6 @@ Thumbs.db
 .DS_Store
 
 *.backup
+
+# Backend helyi környezeti változók
+backend/.env

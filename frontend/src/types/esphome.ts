@@ -26,6 +26,10 @@ export type GenerateResponse = {
   files: GeneratedFile[];
 };
 
+export type GenerationStats = {
+  successful_generations: number;
+};
+
 export type RestoreMode =
   | "ALWAYS_OFF"
   | "ALWAYS_ON"

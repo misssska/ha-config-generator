@@ -1,4 +1,4 @@
-﻿import {
+import {
   afterEach,
   describe,
   expect,
@@ -7,12 +7,40 @@
 } from "vitest";
 
 import {
+  fetchGenerationStats,
   generateEsphomeProject,
 } from "@/lib/esphome-api";
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+describe("fetchGenerationStats", () => {
+  it("lek\u00e9ri a sikeres gener\u00e1l\u00e1sok sz\u00e1m\u00e1t", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        successful_generations: 37,
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchGenerationStats();
+
+    expect(result).toEqual({
+      successful_generations: 37,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/stats"),
+      {
+        signal: undefined,
+      },
+    );
+  });
 });
 
 describe("generateEsphomeProject", () => {

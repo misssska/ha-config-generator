@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   type FormEvent,
@@ -21,6 +21,9 @@ export function useEsphomeGeneration() {
 
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
+
+  const [generationSequence, setGenerationSequence] =
+    useState(0);
 
   const clearGeneratedFiles = useCallback(() => {
     setGeneratedFiles([]);
@@ -51,6 +54,9 @@ export function useEsphomeGeneration() {
           const data = await generateEsphomeProject(input);
 
           setGeneratedFiles(data.files);
+          setGenerationSequence(
+            (sequence) => sequence + 1,
+          );
         } catch (generateError) {
           setError(
             generateError instanceof Error
@@ -92,6 +98,7 @@ export function useEsphomeGeneration() {
 
   return {
     generatedFiles,
+    generationSequence,
     generating,
     error,
     setError,

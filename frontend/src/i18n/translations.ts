@@ -21,6 +21,9 @@ const hungarianTranslations = {
   "app.subtitle":
     "Hardver, GPIO-k és automatizálások egyetlen munkafelületen.",
   "app.backend": "Backend",
+  "app.generationCount": "Sikeres generálások",
+  "app.generationCountLoading": "Betöltés...",
+  "app.generationCountUnavailable": "Nem érhető el",
   "app.automations.title": "Automatizálások",
   "app.automations.description":
     "A következő fejlesztési csomagban ide kerül a vizuális trigger–feltétel–művelet szerkesztő.",
@@ -61,6 +64,9 @@ const englishTranslations: Record<
   "app.subtitle":
     "Hardware, GPIOs and automations in a single workspace.",
   "app.backend": "Backend",
+  "app.generationCount": "Successful generations",
+  "app.generationCountLoading": "Loading...",
+  "app.generationCountUnavailable": "Unavailable",
   "app.automations.title": "Automations",
   "app.automations.description":
     "A visual trigger-condition-action editor will be added here in a future development package.",

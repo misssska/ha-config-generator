@@ -1,16 +1,26 @@
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_cors_origins
+from app.database import (
+    get_successful_generations,
+    increment_successful_generations,
+)
 from app.schemas import (
     BoardOption,
     ESPHomeGenerateRequest,
     ESPHomeGenerateResponse,
+    GenerationStatsResponse,
 )
 from app.services.esphome_generator import (
     build_esphome_project,
     get_board_options,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
@@ -49,6 +59,31 @@ def list_esphome_boards() -> list[BoardOption]:
     return get_board_options()
 
 
+@app.get(
+    "/api/stats",
+    response_model=GenerationStatsResponse,
+)
+def read_generation_stats() -> GenerationStatsResponse:
+    try:
+        count = get_successful_generations()
+    except Exception as error:
+        logger.exception(
+            "Failed to read generation statistics."
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Generation statistics are temporarily "
+                "unavailable."
+            ),
+        ) from error
+
+    return GenerationStatsResponse(
+        successful_generations=count,
+    )
+
+
 @app.post(
     "/api/esphome/generate",
     response_model=ESPHomeGenerateResponse,
@@ -56,4 +91,13 @@ def list_esphome_boards() -> list[BoardOption]:
 def generate_esphome(
     request: ESPHomeGenerateRequest,
 ) -> ESPHomeGenerateResponse:
-    return build_esphome_project(request)
+    response = build_esphome_project(request)
+
+    try:
+        increment_successful_generations()
+    except Exception:
+        logger.exception(
+            "Failed to record successful generation."
+        )
+
+    return response
