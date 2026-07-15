@@ -44,6 +44,7 @@ const hungarianTranslations = {
   "footer.privacy": "Adatkezel\u00e9s",
   "footer.terms": "Felhaszn\u00e1l\u00e1si felt\u00e9telek",
   "footer.contact": "Kapcsolat",
+  "footer.support": "A fejleszt\u00e9s t\u00e1mogat\u00e1sa",
   "footer.note": "F\u00fcggetlen, k\u00f6z\u00f6ss\u00e9gi ESPHome-konfigur\u00e1ci\u00f3gener\u00e1tor.",
 
   "safety.title": "Fontos biztons\u00e1gi figyelmeztet\u00e9s",
@@ -120,6 +121,7 @@ const englishTranslations: Record<
   "footer.privacy": "Privacy",
   "footer.terms": "Terms of use",
   "footer.contact": "Contact",
+  "footer.support": "Support development",
   "footer.note": "Independent community ESPHome configuration generator.",
 
   "safety.title": "Important safety notice",

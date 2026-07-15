@@ -111,6 +111,14 @@ describe("legal and contact pages", () => {
       <SiteFooter />,
     );
 
+    const supportMarkup = renderToStaticMarkup(
+      <SiteFooter supportHandle="example" />,
+    );
+
+    const invalidSupportMarkup = renderToStaticMarkup(
+      <SiteFooter supportHandle="bad/value" />,
+    );
+
     expect(markup).toContain(
       'href="/adatkezeles"',
     );
@@ -119,6 +127,22 @@ describe("legal and contact pages", () => {
     );
     expect(markup).toContain(
       'href="/kapcsolat"',
+    );
+
+    expect(markup).not.toContain(
+      "ko-fi.com/example",
+    );
+    expect(supportMarkup).toContain(
+      'href="https://ko-fi.com/example"',
+    );
+    expect(supportMarkup).toContain(
+      'target="_blank"',
+    );
+    expect(supportMarkup).toContain(
+      'rel="noopener noreferrer"',
+    );
+    expect(invalidSupportMarkup).not.toContain(
+      "ko-fi.com/",
     );
   });
 });
