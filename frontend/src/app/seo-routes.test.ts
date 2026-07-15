@@ -7,6 +7,7 @@ import {
 import robots from "@/app/robots";
 import sitemap from "@/app/sitemap";
 import {
+  GOOGLE_SITE_VERIFICATION,
   SITE_URL,
 } from "@/lib/site-config";
 
@@ -37,5 +38,11 @@ describe("SEO metadata routes", () => {
 
     expect(siteUrl.protocol).toBe("https:");
     expect(siteUrl.pathname).toBe("/");
+  });
+
+  it("defines a Google verification token", () => {
+    expect(
+      GOOGLE_SITE_VERIFICATION,
+    ).toMatch(/^[A-Za-z0-9_-]{20,}$/);
   });
 });

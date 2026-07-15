@@ -9,6 +9,7 @@ import {
   LanguageProvider,
 } from "@/i18n/LanguageProvider";
 import {
+  GOOGLE_SITE_VERIFICATION,
   SITE_DESCRIPTION,
   SITE_NAME,
   SITE_TITLE,
@@ -59,6 +60,9 @@ export const metadata: Metadata = {
     card: "summary",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
+  },
+  verification: {
+    google: GOOGLE_SITE_VERIFICATION,
   },
 };
 

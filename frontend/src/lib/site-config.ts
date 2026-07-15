@@ -9,3 +9,6 @@ export const SITE_TITLE =
 
 export const SITE_DESCRIPTION =
   "Online ESPHome konfigurációgenerátor ESP32 és ESP8266 alaplapokhoz. GPIO-k, relék, érzékelők, PWM, ADC, hálózat és rendszerfunkciók beállítása.";
+
+export const GOOGLE_SITE_VERIFICATION =
+  "jmuD3-5jlkYPQCvrpDJ99hNBDzmpNHJCxp3tlRg65N4";
