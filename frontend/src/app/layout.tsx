@@ -5,6 +5,7 @@ import {
   Geist_Mono,
 } from "next/font/google";
 
+import SoftwareApplicationJsonLd from "@/components/SoftwareApplicationJsonLd";
 import {
   LanguageProvider,
 } from "@/i18n/LanguageProvider";
@@ -57,7 +58,7 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
@@ -78,6 +79,8 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <SoftwareApplicationJsonLd />
+
         <LanguageProvider>
           {children}
         </LanguageProvider>
