@@ -7,10 +7,31 @@ import {
 } from "vitest";
 
 import {
+  fetchBoards,
   fetchGenerationStats,
   generateEsphomeProject,
   submitFeedback,
 } from "@/lib/esphome-api";
+
+describe("fetchBoards", () => {
+  it("uses the same-origin backend proxy", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchBoards();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/backend-api/api/esphome/boards",
+      {
+        signal: undefined,
+      },
+    );
+  });
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -46,7 +67,7 @@ describe("submitFeedback", () => {
         RequestInit,
       ];
 
-    expect(url).toContain("/api/feedback");
+    expect(url).toBe("/backend-api/api/feedback");
     expect(requestInit.method).toBe("POST");
 
     expect(
@@ -79,7 +100,7 @@ describe("fetchGenerationStats", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/api/stats"),
+      "/backend-api/api/stats",
       {
         signal: undefined,
       },
@@ -152,10 +173,14 @@ describe("generateEsphomeProject", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    const [, requestInit] = fetchMock.mock.calls[0] as [
+    const [url, requestInit] = fetchMock.mock.calls[0] as [
       string,
       RequestInit,
     ];
+
+    expect(url).toBe(
+      "/backend-api/api/esphome/generate",
+    );
 
     const requestBody = JSON.parse(
       String(requestInit.body),
