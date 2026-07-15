@@ -6,7 +6,13 @@ import {
   useLanguage,
 } from "@/i18n/LanguageProvider";
 
-export default function SiteFooter() {
+type SiteFooterProps = {
+  supportUrl?: string;
+};
+
+export default function SiteFooter({
+  supportUrl = process.env.NEXT_PUBLIC_SUPPORT_URL?.trim(),
+}: SiteFooterProps = {}) {
   const { t } = useLanguage();
 
   return (
@@ -53,6 +59,16 @@ export default function SiteFooter() {
           >
             {t("footer.contact")}
           </Link>
+          {supportUrl ? (
+            <a
+              href={supportUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition hover:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+            >
+              {t("footer.support")}
+            </a>
+          ) : null}
         </nav>
       </div>
     </footer>
