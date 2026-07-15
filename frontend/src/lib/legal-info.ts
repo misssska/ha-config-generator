@@ -17,6 +17,9 @@ export const DATA_CONTROLLER = {
 export const PRIVACY_NOTICE_LAST_UPDATED =
   "2026. július 15.";
 
+export const TERMS_LAST_UPDATED =
+  "2026. július 15.";
+
 export const FEEDBACK_RETENTION_MONTHS = 12;
 
 export const LOCAL_STORAGE_ITEMS = [

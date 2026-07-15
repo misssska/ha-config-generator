@@ -40,6 +40,11 @@ describe("SEO metadata routes", () => {
         changeFrequency: "monthly",
         priority: 0.4,
       },
+      {
+        url: `${SITE_URL}/felhasznalasi-feltetelek`,
+        changeFrequency: "monthly",
+        priority: 0.4,
+      },
     ]);
   });
 

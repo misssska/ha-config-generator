@@ -41,6 +41,13 @@ export default function SiteFooter() {
           </Link>
 
           <Link
+            href="/felhasznalasi-feltetelek"
+            className="transition hover:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+          >
+            {t("footer.terms")}
+          </Link>
+
+          <Link
             href="/kapcsolat"
             className="transition hover:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
           >

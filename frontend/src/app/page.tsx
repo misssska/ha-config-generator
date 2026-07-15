@@ -17,6 +17,7 @@ import GeneratedProjectDrawer from "@/components/GeneratedProjectDrawer";
 import GenerationCounter from "@/components/GenerationCounter";
 import LanguageSelector from "@/components/LanguageSelector";
 import NetworkSystemSettings from "@/components/NetworkSystemSettings";
+import SafetyNotice from "@/components/SafetyNotice";
 import PwmOutputEditor from "@/components/PwmOutputEditor";
 import RelayEditor from "@/components/RelayEditor";
 import StatusLedSettings from "@/components/StatusLedSettings";
@@ -202,6 +203,8 @@ export default function Home() {
             </div>
           </div>
         </header>
+
+        <SafetyNotice />
 
         <div className="grid items-start gap-5 lg:grid-cols-[460px_minmax(0,1fr)] xl:grid-cols-[520px_minmax(0,1fr)]">
           <aside className="lg:sticky lg:top-2">

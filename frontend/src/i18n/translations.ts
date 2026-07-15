@@ -42,8 +42,13 @@ const hungarianTranslations = {
   "footer.navigation": "Oldalnavig\u00e1ci\u00f3",
   "footer.home": "Konfigur\u00e1tor",
   "footer.privacy": "Adatkezel\u00e9s",
+  "footer.terms": "Felhaszn\u00e1l\u00e1si felt\u00e9telek",
   "footer.contact": "Kapcsolat",
   "footer.note": "F\u00fcggetlen, k\u00f6z\u00f6ss\u00e9gi ESPHome-konfigur\u00e1ci\u00f3gener\u00e1tor.",
+
+  "safety.title": "Fontos biztons\u00e1gi figyelmeztet\u00e9s",
+  "safety.description": "A gener\u00e1lt konfigur\u00e1ci\u00f3t, GPIO-kioszt\u00e1st \u00e9s elektromos bek\u00f6t\u00e9st telep\u00edt\u00e9s el\u0151tt mindig ellen\u0151rizd.",
+  "safety.link": "Biztons\u00e1gi felt\u00e9telek",
 
   "app.title": "ESPHome konfigurációgenerátor",
   "app.subtitle":
@@ -113,8 +118,13 @@ const englishTranslations: Record<
   "footer.navigation": "Site navigation",
   "footer.home": "Configurator",
   "footer.privacy": "Privacy",
+  "footer.terms": "Terms of use",
   "footer.contact": "Contact",
   "footer.note": "Independent community ESPHome configuration generator.",
+
+  "safety.title": "Important safety notice",
+  "safety.description": "Always verify the generated configuration, GPIO assignments, and electrical wiring before installation.",
+  "safety.link": "Safety terms",
 
   "app.title": "ESPHome configuration generator",
   "app.subtitle":
